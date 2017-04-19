@@ -28,6 +28,11 @@ def get_str_field(line, start, stop, required=True):
     if _check_valid_length(line, start, stop, required):
         return line[start - 1: stop]
 
+def get_temp(line, start, stop, required = True):
+    x = get_signed_int_field(line, start, stop, required)
+    if x:
+        return x/float(10)
+
 def get_geo_coord(line, start, stop, required = True):
     x = get_signed_int_field(line, start, stop, required)
     if x:
@@ -68,4 +73,28 @@ def parse_line(line):
         'wind_observation_direction angle':get_int_field(line, 61, 63),
         'wind_observation_direction_quality_code':get_int_field(line, 64, 64),
         'wind_observation_type_code':get_str_field(line, 65, 65),
+        'wind_observation_speed_rate': get_int_field(line, 66, 69),
+        'wind_observation_speed_quality_code': get_int_field(line, 70, 70),
+        'sky_condition_observation_ceiling_height_dimension':get_int_field(line,
+            71, 75),
+        'sky_condtion_observation_ceiling_quality_code':get_int_field(line, 76,
+            76),
+        'sky_condition_observation_ceiling_determination_code':get_str_field(line,
+            77, 77),
+        'sky_condition_observation_cavok_code':get_str_field(line, 78, 78),
+        'visibility_observation_distance_dimension':get_int_field(line, 79,
+            84),
+        'visibility_observation_distance_quality_code':get_int_field(line,
+            85,85),
+        'visibility_observation_variability_code':get_str_field(line, 86, 86),
+        'visibility_observation_quality_variability_code':get_int_field(line,
+            87, 87),
+        'air_temperature_observation_air_temperature':get_temp(line, 88,
+            92),
+        'air_temperature_observation_air_temperature_quality_code':
+        get_str_field(line, 93, 93),
+        'air_temperature_observation_dew_point_temperature':get_temp(line, 94,
+            98),
+        'air_temperature_observation_dew_point_quality_code':get_str_field(line,
+            99, 99),
         }

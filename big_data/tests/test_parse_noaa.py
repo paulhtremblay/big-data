@@ -18,6 +18,10 @@ class TestParseNoaa(unittest.TestCase):
     def test_parse_line_does_not_raise_error(self):
         pp.pprint(parse_line.parse_line(lines[0]))
 
+    def test_parse_line_does_all_lines_does_not_raise_error(self):
+        for line in lines:
+            parse_line.parse_line(line)
+
     def test_line_is_valid_len_does_not_raise_error(self):
         parse_line.line_is_valid_len(lines[0])
 

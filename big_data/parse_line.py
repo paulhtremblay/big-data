@@ -28,15 +28,20 @@ def get_str_field(line, start, stop, required=True):
     if _check_valid_length(line, start, stop, required):
         return line[start - 1: stop]
 
-def get_temp(line, start, stop, required = True):
+def _field_with_divide_factor(line, start, stop, scale, required = True):
+    assert isinstance(scale, int), "scale must be int"
     x = get_signed_int_field(line, start, stop, required)
     if x:
-        return x/float(10)
+        return x/float(scale)
+
+def get_temp(line, start, stop, required = True):
+    return _field_with_divide_factor(line, start, stop, 10, required)
+
+def get_air_pressure(line, start, stop, required = True):
+    return _field_with_divide_factor(line, start, stop, 10, required)
 
 def get_geo_coord(line, start, stop, required = True):
-    x = get_signed_int_field(line, start, stop, required)
-    if x:
-        return x/float(1000)
+    return _field_with_divide_factor(line, start, stop, 1000, required)
 
 def get_signed_int_field(line, start, stop, required = True):
     if _check_valid_length(line, start, stop, required):
@@ -97,4 +102,12 @@ def parse_line(line):
             98),
         'air_temperature_observation_dew_point_quality_code':get_str_field(line,
             99, 99),
+        "atmospheric_pressure_observation_sea_level_pressure":get_air_pressure(line,
+            100, 104),
+        "atmospheric_pressure_observation_sea_level_pressure_quality_code":get_str_field(line,
+            105, 105),
+        "geophysical_point_observation_additional_data_identifier":get_str_field(line, 106,
+            108, False),
+        "liquid_precipitation_occurrence_identifier":get_str_field(line, 109,
+            111, False),
         }

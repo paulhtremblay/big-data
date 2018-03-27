@@ -6,6 +6,8 @@ In $SPARK_HOME/conf/spark-defaults.conf include:
 
 spark.jars.packages                com.amazonaws:aws-java-sdk:1.7.4,org.apache.hadoop:hadoop-aws:2.7.2
 
+$SPARK_HOME/conf/hdfs-site.xml
+
 <?xml version="1.0"?>
 <configuration>
 <property>
@@ -38,4 +40,8 @@ Defining AWS credentials in code, e.g.:
 
 sc._jsc.hadoopConfiguration().set("fs.s3a.access.key", "YOUR_KEY_HERE")
 sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", "YOUR_SECRET_HERE")
+
+Actually, for credentials, I had to:
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
 

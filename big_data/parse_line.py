@@ -56,6 +56,9 @@ def get_int_field(line, start, stop, required=True):
         except ValueError:
             raise InvalidDoc("Can't convert to int")
 
+def parse_line_(line):
+    return (line, len(line))
+
 def parse_line(line):
     return {
         'total_variable_characters':get_int_field(line, 1, 4),
@@ -75,7 +78,7 @@ def parse_line(line):
              56),
         'meteorological_point_observation_quality_control_process_name':
             get_str_field(line, 57, 60),
-        'wind_observation_direction angle':get_int_field(line, 61, 63),
+        'wind_observation_direction_angle':get_int_field(line, 61, 63),
         'wind_observation_direction_quality_code':get_int_field(line, 64, 64),
         'wind_observation_type_code':get_str_field(line, 65, 65),
         'wind_observation_speed_rate': get_int_field(line, 66, 69),
@@ -105,7 +108,7 @@ def parse_line(line):
         "atmospheric_pressure_observation_sea_level_pressure":get_air_pressure(line,
             100, 104),
         "atmospheric_pressure_observation_sea_level_pressure_quality_code":get_str_field(line,
-            105, 105),
+            105, 105, False),
         "geophysical_point_observation_additional_data_identifier":get_str_field(line, 106,
             108, False),
         "liquid_precipitation_occurrence_identifier":get_str_field(line, 109,

@@ -45,3 +45,17 @@ Actually, for credentials, I had to:
 export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
 
+
+Main: 47, -68
+Florida: 25, -80
+Washington State: 49, -123
+California: 33, -117
+
+
+dataframe
+  .write
+    .mode(SaveMode.Append)
+      .partitionBy("year", "month", "date", "country", "predicate")
+        .parquet(outputPath)
+
+https://stackoverflow.com/questions/33823172/how-to-control-number-of-parquet-files-generated-when-using-partitionby

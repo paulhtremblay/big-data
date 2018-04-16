@@ -14,7 +14,18 @@ def count_us_ws(path):
        .map(lambda x: parse_line.parse_line(x))
        
     df = rdd.toDF()
-    df.write.parquet('s3a://paulhtremblay/parquet_test/new/date'.format(date = datetime.datetime.now()))
+    df.write.parquet('s3a://paulhtremblay/parquet_test/new/{date}'.format(date = datetime.datetime.now()))
+    pp.pprint(df.show())
+    air_temperature_observation_air_temperature
+    fixed_weather_station_ncei_wban_identifier
+
+    """
+    (df
+        .write
+        .partitionBy("favorite_color")
+        .bucketBy(42, "name")
+        .saveAsTable("people_partitioned_bucketed"))
+    """
 
 
 if __name__ == '__main__':

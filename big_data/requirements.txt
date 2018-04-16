@@ -1,0 +1,13 @@
+appdirs==1.4.3
+bokeh==0.12.15
+Jinja2==2.10
+MarkupSafe==1.0
+numpy==1.14.2
+packaging==17.1
+Pillow==5.1.0
+pyparsing==2.2.0
+python-dateutil==2.7.2
+PyYAML==3.12
+selenium==3.11.0
+six==1.11.0
+tornado==5.0.2

@@ -4,8 +4,18 @@ import csv
 
 import timeit
 import MySQLdb
+import argparse
 
 pp =pprint.PrettyPrinter(indent = 4)
+
+def _get_args():
+    parser = argparse.ArgumentParser(description='Run tests with inexes on database')
+    parser.add_argument('--verbose', '-verbose', action='store_true', help='verbose messaging')
+    parser.add_argument('--no-primary-key', action='store_true', help='run test for no primary key')
+    parser.add_argument('--primary-key', action='store_true', help='run test for  primary key')
+    parser.add_argument('--primary-key', action='store_true', help='run test for  primary key')
+    return parser.parse_args()
+
 
 def write_csv(path, results):
     with open(path, 'w') as write_obj:
@@ -152,8 +162,11 @@ def _no_primary_key(conn):
     write_csv('no_primary_key.csv', result)
 
 
-
 def main():
+    args = _get_args()
+    print(args)
+
+def main_():
     conn = _get_mysql_db(host = 'pi-oasis-dev-cluster.cluster-ctiutsvmu8ci.us-west-2.rds.amazonaws.com', 
         user = 'admin', pw = os.environ['AURORA_DB_PASSWORD'], db = 'app_dev')
     #_no_primary_key(conn)

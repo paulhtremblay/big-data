@@ -6,16 +6,17 @@ import pprint
 pp = pprint.PrettyPrinter(indent = 4)
 
 
-def count_us_ws(path):
+def read_pq():
     spark = SparkSession \
         .builder \
         .appName("Python Spark SQL data source example") \
         .getOrCreate()
-    parquetFile = spark.read.parquet('s3a://paulhtremblay/parquet_test/new')
-    print(type(parquetFile))
+    df = spark.read.parquet('s3a://paulhtremblay/parquet_test/no_partition')
+    df.createOrReplaceTempView("weather")
+    max_df = spark.sql("SELECT max(int_temp) FROM weather")
+    max_df.show()
 
 
 if __name__ == '__main__':
-    #count_us_ws('paulhtremblay/noaa/data/1991')
-    count_us_ws('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')
+    read_pq()
         

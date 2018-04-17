@@ -16,8 +16,6 @@ def count_us_ws(path):
     df = rdd.toDF()
     df.write.parquet('s3a://paulhtremblay/parquet_test/new/{date}'.format(date = datetime.datetime.now()))
     pp.pprint(df.show())
-    air_temperature_observation_air_temperature
-    fixed_weather_station_ncei_wban_identifier
 
     """
     (df

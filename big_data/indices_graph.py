@@ -33,16 +33,6 @@ def no_indices():
 def indices():
     c = 2.01342786663877e-06
     index = _get_indices_data()
-    """
-    f = []
-    for counter, i in enumerate(index[0]):
-        c = index[1][counter]/(i * math.log(i) * i)
-        f.append(c)
-
-    print(f)
-    return
-    """
-
     output_file("indices_sql2.html")
     p = figure(title="With Indices", x_axis_label='num rows', y_axis_label='seconds', 
             plot_width=1000, plot_height=1000)
@@ -54,7 +44,7 @@ def indices():
 
 
 def main():
-    #no_indices()
+    no_indices()
     indices()
 
 if __name__ == '__main__':

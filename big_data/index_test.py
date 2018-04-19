@@ -1,6 +1,9 @@
 import os
 import pprint
+import random
+import string
 import csv
+import tempfile
 
 import timeit
 import MySQLdb
@@ -8,18 +11,53 @@ import argparse
 
 pp =pprint.PrettyPrinter(indent = 4)
 
+
+def _get_host():
+    return 'data-blog.cqz4vljrvgvw.us-west-2.rds.amazonaws.com'
+
+def _get_db():
+    return 'test'
+
+def _get_db_user():
+    return 'admin'
+
+def _gen_random():
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(random.randint(30, 49)))
+
+def _get_db_pw():
+    return os.environ['INDEX_TEST_DB_PW']
+
+def _make_csv_file(num_lines):
+    fh, path = tempfile.mkstemp()
+    with open(path, 'w') as write_obj:
+        for i in range(num_lines):
+            write_obj.write('{pk},{name1},{name2}\n'.format(
+                pk = i, name1 = _gen_random(), 
+                name2 = _gen_random()))
+    return fh, path
+
 def _get_args():
     parser = argparse.ArgumentParser(description='Run tests with inexes on database')
     parser.add_argument('--verbose', '-verbose', action='store_true', help='verbose messaging')
     parser.add_argument('--no-primary-key', action='store_true', help='run test for no primary key')
     parser.add_argument('--primary-key', action='store_true', help='run test for  primary key')
-    parser.add_argument('--primary-key', action='store_true', help='run test for  primary key')
+    parser.add_argument('--insert-test', action='store_true', help='run test for insert rows')
+    parser.add_argument('--create-base1', action='store_true', help='create base table 1')
+    parser.add_argument('--num-insertions', type=int, help='number of insertions')
+    parser.add_argument('--num-rows', type=int, help='number of rows')
     return parser.parse_args()
 
 
 def write_csv(path, results):
     with open(path, 'w') as write_obj:
         writer = csv.DictWriter(write_obj, fieldnames=['num_rows', 'time'])
+        writer.writeheader()
+        for result in results:
+            writer.writerow(result)
+
+def _write_results(path, results, fieldnames):
+    with open(path, 'w') as write_obj:
+        writer = csv.DictWriter(write_obj, fieldnames=fieldnames)
         writer.writeheader()
         for result in results:
             writer.writerow(result)
@@ -43,7 +81,8 @@ def _create_one_tb(conn, primary_key = ''):
     """.format(primary_key = primary_key))
     cursor.close()
 
-def _create_base_table(conn, path, table):
+def _create_base_table(conn, table):
+    fh, path = _make_csv_file(int(1e6))
     cursor = conn.cursor()
     cursor.execute("""
         drop table if exists {table};
@@ -53,18 +92,20 @@ def _create_base_table(conn, path, table):
     cursor.execute("""
     create table {table}
     (pk int not null primary key ,
-            name1 varchar(30) not null ,
-            name2 varchar(30) not null
+            name1 varchar(50) not null ,
+            name2 varchar(50) not null
     )
     """.format(table = table))
     cursor.close()
     cursor = conn.cursor()
-    cursor.execute("""
-    load data local infile '{path}' into table {table}
+    cursor.execute(""" load data local infile '{path}' into table {table}
     fields terminated by ','
     lines terminated by '\n'
     """.format(table = table, path = path))
     cursor.close()
+    os.close(fh)
+    os.remove(path)
+    conn.commit()
 
 def _test_load_one_tb(cursor, table, base_table, number):
     cursor.execute("""
@@ -72,6 +113,9 @@ insert into {table}
 select * from {base_table} limit {number}
 ;
     """.format(table = table, number = number, base_table = base_table))
+
+def create_base_table1(conn):
+    _create_base_table(conn, 'base_test1.txt', 'test1')
 
 def _create_temp_table(conn, table, base_table, num_rows, primary_key = ''):
     cursor = conn.cursor()
@@ -83,8 +127,8 @@ def _create_temp_table(conn, table, base_table, num_rows, primary_key = ''):
     cursor.execute("""
 create table {table}
 (pk int not null {primary_key},
-	name1 varchar(30) not null ,
-	name2 varchar(30) not null
+	name1 varchar(50) not null ,
+	name2 varchar(50) not null
 )
     """.format(table = table, primary_key = primary_key))
     cursor.close()
@@ -95,6 +139,7 @@ select * from {base_table} limit {number}
 ;
     """.format(table = table, number = num_rows, base_table = base_table))
     cursor.close()
+    conn.commit()
 
 def _create_temp_tables(conn, primary_key, num_rows):
     _create_temp_table(conn, table = 'test11', base_table = 'test1', primary_key = primary_key,  num_rows = num_rows)
@@ -161,22 +206,63 @@ def _no_primary_key(conn):
         result.append({'num_rows':i, 'time': t})
     write_csv('no_primary_key.csv', result)
 
+def _delete_rows(conn, table, row_list):
+    cursor = conn.cursor()
+    for i in row_list:
+        cursor.execute("""delete from {table} where pk = {pk}""".format(pk =  i, table = table))
+    conn.commit()
 
-def main():
-    args = _get_args()
-    print(args)
+def _insert_func(cursor, table, row_list):
+    for i in row_list:
+        cursor.execute("""insert into {table} values({pk}, 'xxxxxxxxxxxxxxxxxxxxxxxx', 
+                'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')""".format(pk = i, table = table))
 
-def main_():
-    conn = _get_mysql_db(host = 'pi-oasis-dev-cluster.cluster-ctiutsvmu8ci.us-west-2.rds.amazonaws.com', 
-        user = 'admin', pw = os.environ['AURORA_DB_PASSWORD'], db = 'app_dev')
-    #_no_primary_key(conn)
-    #_primary_key(conn)
+
+def insert_test(num_rows = 100):
+    conn = _get_mysql_db(host = _get_host(), user = _get_db_user(), pw = _get_db_pw(), db = _get_db())
+    _create_temp_table(conn, table = 'test_insert_pk', base_table = 'test_base1', num_rows = num_rows, primary_key = 'primary key')
+    _create_temp_table(conn, table = 'test_insert_npk', base_table = 'test_base1', num_rows = num_rows, primary_key = '')
+    cursor = conn.cursor()
+    pk_results = []
+    npk_results = []
+    for i in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+        row_list = random.sample(range(1, num_rows), i)
+        _delete_rows(conn, 'test_insert_pk', row_list)
+        _delete_rows(conn, 'test_insert_npk', row_list)
+        wrapped = wrapper(_insert_func, cursor, 'test_insert_pk', row_list)
+        tpk = timeit.timeit(wrapped, number=1)
+        pk_results.append({'time':tpk, 'num_rows':i})
+        wrapped = wrapper(_insert_func, cursor, 'test_insert_npk', row_list)
+        tnpk = timeit.timeit(wrapped, number=1)
+        npk_results.append({'time':tnpk, 'num_rows':i})
+    _write_results('pk_insert_results.csv', pk_results, ['time', 'num_rows'])
+    _write_results('npk_insert_results.csv', npk_results, ['time', 'num_rows'])
+    cursor.close()
+    conn.commit()
+
+def create_table_test():
+    conn = _get_mysql_db(host = _get_host(), 
+        user = _get_db_user(), pw = _get_db_pw(), db = _get_db())
     _create_one_tb(conn = conn, primary_key = '')
     cursor = conn.cursor()
     wrapped = wrapper( _test_load_one_tb, cursor, 'test55', 'test1', int(1e6))
     t = timeit.timeit(wrapped, number=1)
-    print(t)
     cursor.close()
+
+def create_base1():
+    conn = _get_mysql_db(host = _get_host(), 
+        user = _get_db_user(), pw = _get_db_pw(), db = _get_db())
+    _create_base_table(conn, table = 'test_base1')
+
+
+def main():
+    args = _get_args()
+    if args.insert_test == True:
+        insert_test(num_rows = args.num_rows)
+    elif args.create_base1 == True:
+        create_base1()
+    else:
+        raise ValueError("Please choose an option")
 
 if __name__ == '__main__':
     main()

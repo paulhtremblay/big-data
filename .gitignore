@@ -87,3 +87,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+big_data/data_out

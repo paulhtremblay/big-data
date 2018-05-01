@@ -48,5 +48,12 @@ def main():
     indices()
 
 if __name__ == '__main__':
-    main()
+    d = _get_no_indices_data()
+    print('num_rows,time,type')
+    for counter, data in enumerate(d[0]):
+        print('{data},{data2},no index'.format(data = data, data2 = d[1][counter]))
+    d = _get_indices_data()
+    for counter, data in enumerate(d[0]):
+        print('{data},{data2},index'.format(data = data, data2 = d[1][counter]))
+    #main()
 

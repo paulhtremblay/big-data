@@ -1,0 +1,26 @@
+num_rows,time,type
+1000,0.2,no index
+2000,0.6,no index
+3000,1.4,no index
+4000,2.1,no index
+5000,3.3,no index
+6000,4.8,no index
+7000,7.3,no index
+8000,10.4,no index
+10000,13.0,no index
+15000,24.8,no index
+20000,55.4,no index
+25000,70.1,no index
+30000,118.1,no index
+60000,398.5,no index
+100000,0.3,index
+200000,4.0,index
+300000,7.8,index
+400000,11.4,index
+600000,16.8,index
+700000,20.9,index
+800000,24.9,index
+900000,23.4,index
+1000000,25.7,index
+1400000,39.3,index
+1800000,52.2,index

@@ -1,0 +1,13 @@
+time,num_rows,type
+0.4582689001,200,primary key
+0.6070605409,400,primary key
+0.415158481,600,primary key
+1.100173127,800,primary key
+0.859063554,1000,primary key
+3.905041239,2000,primary key
+0.0444677421,200,no primary key
+0.0681417191,400,no primary key
+0.2999158771,600,no primary key
+0.133472415,800,no primary key
+0.163901018,1000,no primary key
+0.498288025,2000,no primary key

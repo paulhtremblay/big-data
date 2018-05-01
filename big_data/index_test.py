@@ -126,20 +126,16 @@ def create_base_table2(conn):
     """Table with longer rows"""
     _create_base_table(conn, 'base_test2.txt', 'test2')
 
-def _create_temp_table(conn, table, base_table, num_rows, primary_key = ''):
+def _create_temp_table(conn, table, base_table, num_rows, num_columns,  primary_key = ''):
     cursor = conn.cursor()
     cursor.execute("""
         drop table if exists {table}
     """.format(table = table))
     cursor.close()
     cursor = conn.cursor()
-    cursor.execute("""
-create table {table}
-(pk int not null {primary_key},
-	name1 varchar(50) not null ,
-	name2 varchar(50) not null
-)
-    """.format(table = table, primary_key = primary_key))
+    s = 'create table {table}\n(pk int not null {primary_key},\n'.format(table = table, primary_key = primary_key) + \
+        ',\n'.join(['name{x} varchar(50) not null'.format(x = x) for x in range(1, num_columns + 1)]) + ')'
+    cursor.execute(s)
     cursor.close()
     cursor = conn.cursor()
     cursor.execute("""
@@ -215,20 +211,18 @@ def _no_primary_key(conn):
         result.append({'num_rows':i, 'time': t})
     write_csv('no_primary_key.csv', result)
 
+def _prepare_insert_statement(table, row_list, num_columns):
+    cols = ["'xxxxxxxxxxxxxxxxxxxxxxxx'" for x in range(num_columns)]
+    values = ',\n'.join(["({pk}, {cols})".format(pk = x, cols = ','.join(cols)) for x in row_list] )
+    return "insert into {table} values{values}".format(table= table, values = values)
+
 def _delete_rows(conn, table, row_list):
     cursor = conn.cursor()
     cursor.execute("""delete from {table} where pk in ({pks})""".format(table = table, pks = ','.join([str(x) for x in row_list])))
     conn.commit()
 
-def _insert_func(cursor, table, row_list):
-    l = """insert into table {table} values({pk})
-    """.format(table = table, pk = ','.join([str(x) for x in row_list]))
-    l = []
-    for i in row_list:
-        l.append("({pk}, 'xxxxxxxxxxxxxxxxxxxxxxxx', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')".format(pk = i))
-
-    l = 'insert into {table} values{values}'.format(table = table, values = ',\n'.join(l))
-    cursor.execute(l)
+def _insert_func(cursor, prepared_statment):
+    cursor.execute(prepared_statment)
 
 def _delete_func(cursor, table, row_list):
     for i in row_list:
@@ -263,19 +257,23 @@ def delete_test(num_rows = 100):
 
 def insert_test(num_rows = 100):
     conn = _get_mysql_db(host = _get_host(), user = _get_db_user(), pw = _get_db_pw(), db = _get_db())
-    _create_temp_table(conn, table = 'test_insert_pk', base_table = 'test_base1', num_rows = num_rows, primary_key = 'primary key')
-    _create_temp_table(conn, table = 'test_insert_npk', base_table = 'test_base1', num_rows = num_rows, primary_key = '')
+    _create_temp_table(conn, table = 'test_insert_pk', base_table = 'test_base2', num_rows = num_rows, num_columns = 30,
+            primary_key = 'primary key')
+    _create_temp_table(conn, table = 'test_insert_npk', base_table = 'test_base2', num_rows = num_rows, 
+            num_columns = 30, primary_key = '')
     cursor = conn.cursor()
     pk_results = []
     npk_results = []
-    for i in [1000, 10000,50000 ]:
+    for i in [200, 400, 600, 800, 1000, 2000]:
         row_list = random.sample(range(1, num_rows), i)
         _delete_rows(conn, 'test_insert_pk', row_list)
         _delete_rows(conn, 'test_insert_npk', row_list)
-        wrapped = wrapper(_insert_func, cursor, 'test_insert_pk', row_list)
+        prepared_statment = _prepare_insert_statement('test_insert_pk', row_list, 30)
+        wrapped = wrapper(_insert_func, cursor, prepared_statment)
         tpk = timeit.timeit(wrapped, number=1)
         pk_results.append({'time':tpk, 'num_rows':i})
-        wrapped = wrapper(_insert_func, cursor, 'test_insert_npk', row_list)
+        prepared_statment = _prepare_insert_statement('test_insert_npk', row_list, 30)
+        wrapped = wrapper(_insert_func, cursor, prepared_statment)
         tnpk = timeit.timeit(wrapped, number=1)
         npk_results.append({'time':tnpk, 'num_rows':i})
     _write_results('pk_insert_results.csv', pk_results, ['time', 'num_rows'])

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.json",
+  "width": 900,
+  "height": 560,
+  "padding": {"top": 0, "left": 0, "right": 0, "bottom": 0},
+  "signals": [],
+  "data": [
+  {
+    "name": "states",
+    "url": "us-10m.json",
+    "format": {"type": "topojson", "feature": "states"},
+    "transform": [
+      {
+        "type": "geopath",
+        "projection": "projection1"
+      }
+    ]
+  },
+  {
+	  "name":"airports2",
+	  "values":[
+        {"longitude": "-89.23450472", "latitude": 31.95376472, "num":55},
+        {"longitude": "-95.01792778", "latitude": 30.68586111, "num":10}
+	  ],
+  "transform": [
+    {
+      "type": "geopoint",
+      "projection": "projection1",
+      "fields": ["longitude", "latitude"]
+    }
+  ]
+  }
+],
+  "scales": [
+	  {"name":"size",
+		  "type":"linear",
+		  "domain": {"data": "airports2", "field": "num"},
+          "range": [16, 1000]
+	  }
+  ],
+ "projections": [
+  {
+    "name": "projection1",
+    "type": "albersUsa",
+    "scale": 1200,
+    "translate": [{"signal": "width / 2"}, {"signal": "height / 2"}]
+  }
+],
+"marks": [
+  {
+    "type": "path",
+    "from": {"data": "states"},
+    "encode": {
+      "enter": {
+        "fill": {"value": "#dedede"},
+        "stroke": {"value": "white"}
+      },
+      "update": {
+        "path": {"field": "path"}
+      }
+    }
+  },
+{
+"type": "symbol",
+  "from": {"data": "airports2"},
+  "encode": {
+    "enter": {
+      "size": {"scale": "size", "field": "num"},
+      "fill": {"value": "steelblue"},
+      "fillOpacity": {"value": 0.8},
+      "stroke": {"value": "white"},
+      "strokeWidth": {"value": 1.5}
+    },
+    "update": {
+      "x": {"field": "x"},
+      "y": {"field": "y"}
+    }
+  }
+}
+
+]
+}
+

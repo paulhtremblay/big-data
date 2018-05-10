@@ -17,12 +17,11 @@ def count_us_ws(path):
        .filter(lambda x: x.get('geophysical_point_observation_latitude_coordinate') > -68)\
        .filter(lambda x: x.get('geophysical_point_observation_latitude_coordinate') > -117)\
        .count()
-       
     #pp.pprint(rdd.take(1))
     #print(rdd.getNumPartitions())
     print(num_records)
 
 if __name__ == '__main__':
-    #count_us_ws('paulhtremblay/noaa/data/1991')
-    count_us_ws('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')
-        
+    count_us_ws('paulhtremblay/noaa/data/2000')
+    #count_us_ws('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')
+    #count_us_ws('paulhtremblay/noaa/data/1901')

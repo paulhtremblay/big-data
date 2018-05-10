@@ -7,15 +7,13 @@ import pprint
 pp = pprint.PrettyPrinter(indent = 4)
 
 
-def count_us_ws(path):
+def write_to_parquet(path):
     sc = SparkContext('local')
     sqlContext = SQLContext(sc)
     rdd = sc.textFile('s3a://{path}'.format(path = path), 100)\
        .map(lambda x: parse_line.parse_line(x))
-       
     df = rdd.toDF()
-    df.write.parquet('s3a://paulhtremblay/parquet_test/new/{date}'.format(date = datetime.datetime.now()))
-    pp.pprint(df.show())
+    df.write.mode('Overwrite').parquet('s3a://paulhtremblay/parquet_test/simple')
 
     """
     (df
@@ -27,6 +25,5 @@ def count_us_ws(path):
 
 
 if __name__ == '__main__':
-    #count_us_ws('paulhtremblay/noaa/data/1991')
-    count_us_ws('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')
-        
+    write_to_parquet('paulhtremblay/noaa/data/2000')
+    #write_to_parquet('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')

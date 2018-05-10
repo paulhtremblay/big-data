@@ -89,3 +89,4 @@ ENV/
 .ropeproject
 
 big_data/data_out
+big_data/maps/us-10m.json

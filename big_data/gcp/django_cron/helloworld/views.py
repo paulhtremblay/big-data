@@ -14,11 +14,10 @@
 # limitations under the License.
 
 
-import pprint
 
 from django.http import HttpResponse
 from .decorators import request_is_cron
-pp =pprint.PrettyPrinter(indent = 4)
+from .tasks import two_projects
 
 
 def index(request):
@@ -30,3 +29,7 @@ def cron(request):
     print(request.META.get('HTTP_X_APPENGINE_CRON'))
     return HttpResponse('cron is working running on Google App Engine. HTTP_X_APPENGINE_CRON is {cron}'.format(
             cron =  request.META.get("HTTP_X_APPENGINE_CRON")))
+
+def two_accounts_cron(request):    
+    two_projects()
+    return HttpResponse("works", status=204)

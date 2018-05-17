@@ -35,6 +35,6 @@ import helloworld.views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^$', helloworld.views.index),
-    url(r'^cron/minute$', helloworld.views.cron),
+    url(r'^cron/minute/$', helloworld.views.cron),
+    url(r'^cron/two-projects/$', helloworld.views.two_accounts_cron),
 ]

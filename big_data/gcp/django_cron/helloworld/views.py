@@ -14,8 +14,10 @@
 # limitations under the License.
 
 
+import os
 
 from django.http import HttpResponse
+from django.conf import settings
 from .decorators import request_is_cron
 from .tasks import two_projects
 
@@ -32,4 +34,15 @@ def cron(request):
 
 def two_accounts_cron(request):    
     two_projects()
-    return HttpResponse("works", status=204)
+    return HttpResponse("works", status=201)
+
+def variables_check(request):
+    return HttpResponse("""
+    base dir is {base_dir},
+    secrets dir is  {secrets},
+    is dir =  {is_dir}
+    """.format(
+        base_dir = settings.BASE_DIR,
+        secrets  = os.path.join(settings.BASE_DIR, 'secrets'),
+        is_dir =  os.path.isdir(os.path.join(settings.BASE_DIR, 'secrets'))
+        ))

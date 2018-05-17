@@ -28,13 +28,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include(blog_urls))
 """
 from django.conf.urls import include, url
+from django.urls import path, re_path
+
 from django.contrib import admin
 
 import helloworld.views
 
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'^cron/minute/$', helloworld.views.cron),
-    url(r'^cron/two-projects/$', helloworld.views.two_accounts_cron),
+    re_path(r'^admin/', admin.site.urls),
+    re_path(r'^cron/minute/$', helloworld.views.cron),
+    re_path(r'^cron/two-projects/$', helloworld.views.two_accounts_cron),
+    re_path(r'test/variable-names/$', helloworld.views.variables_check ),
 ]
+

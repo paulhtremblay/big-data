@@ -24,6 +24,6 @@ setup(name="python_big_data_tools",
         "Operating System :: OS Independent",
     ],
     platforms='any',
-    packages=['python_tools'],
+    packages=['big_data_tools', 'big_data_tools/bokeh_tools'],
     #scripts=[script_name1, script_name2],
     )

@@ -1,0 +1,19 @@
+Dear Paul,
+
+I hope this message finds you well. Now that I’ve had our academic programs administrators review your CV, the results of our interview, and contacted your references, we’d like to select you to teach the Introduction to Data Engineering course for the Xiangfei Education Group Big Data program starting this July! Congratulations!
+
+I have some great news about the curriculum. We have 30 hours of curriculum available for you to work with already. Late last week colleagues who manage the Professional & Continuing Education course Introduction to Data Engineering (https://www.pce.uw.edu/courses/introduction-to-data-engineering) shared the Canvas site of one of their instructors who is willing to share the 30 hour course with us. Our program is 27 hours of classroom time (plus the three site visits, which don’t need to tie closely to the classroom curriculum), so what we have now should give you the right amount of content to work with. Please look at the BIGDATA 210 Canvas page as an observer by logging in with our Google account. Here are the directions:
+
+Login to Canvas here: https://canvas.uw.edu/ 
+
+Choose the “Don’t have UW NetID? Log in with a non-UW account” and log in with this Google account:
+
+Google email: IELP.Test.Data@gmail.com
+
+Google email password: Test.Data
+
+When we set up our own courses in our registration system, we will copy everything from the BIGDATA 210 Canvas site into your course for you to use as you prefer.
+
+We will be able to confirm your acceptance of this position with your reply to this email and move on to the next step in the selection/hiring process. I will look forward to hearing from you.
+
+Thank you!

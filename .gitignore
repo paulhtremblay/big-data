@@ -89,4 +89,9 @@ ENV/
 .ropeproject
 
 big_data/data_out
+
+big_data/course/*.pdf
+big_data/maps/temp_data/*
+big_data/temp_data/*
+big_data/r/.Rhistory
 big_data/maps/us-10m.json

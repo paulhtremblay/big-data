@@ -1,0 +1,9 @@
+
+Agree with overview of Spark. 
+
+How to demonstrate Spark architecture beyond lecture? 
+
+What is sparkContext? It is part of the driver. First when an action is called (later), sparkContext creates a 
+job. It then uses the scheduler to create a DAG. Then the scheculer calls on the executers
+
+example of lazy evaluation (count, for example)

@@ -1,0 +1,31 @@
+1. how an appreciation for why distributed computing is hard
+2. Explain how the bigness of Big Data forces us to deal with distribution
+3. Sketch the key ideas behind HDFS and MapReduce
+4. Get a running Hortonworks Sandbox Hadoop environment running
+5. Work with some data in the sandbox using Hive
+
+Are students going to have a VM? Am very confulsed. And the docker image is one for Azure? 
+
+Maybe point(1). Point(2) is good. point (3) is good. Not sure about (4) and (5)
+
+Slide(4) seems pointless and inaccurate. Sure, networks are unreliable, 
+but the abstractio of Spark makes them seemlessly fault tolerent and therefore reliable. 
+Not sure for an intro course this point is relevant. Maybe if you are actually working 
+on YARN
+
+Again, to harp, the stuff of HDFS seems a bit irrelevant. In AWS you are going to use S3. Google
+cloud you are going to use storage. More important to udnerstand threading vs loading CSV, for 
+example. 
+
+mapreduce is good because you can show how it is done on mapreduce, RDD, and dataframe
+
+keep in mind that map reduce for zipcodes is the same as for word count
+
+Don't agree with going with HIVE. It is outdate, and one of many redundant SQL distruted solutions. 
+Note that HIVE must use map reduce as the computing engine
+
+partions. Hmm. Need to do this with Spark
+
+And assume students won't be doing assignment?
+
+

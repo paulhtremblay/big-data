@@ -1,0 +1,34 @@
+Objectives
+1. understand what big data is
+2. understand map and reduce and the history
+3. understand hadoop
+4. understand spark
+5. understand clusters and distributed computing
+
+
+Notes:
+What is the slowest part of processing big data? I/O!
+strategies to get around:
+1. distributed systems
+
+ETL is good
+
+Enterprise datawarehouses--not really expensive
+(Is Enterprise Oracle?)
+
+early 2000s Google map and reduce
+
+2006 Amazon AWS. Able to get multiple machines at your fingertips
+
+
+Spark RDD vs Dataframe
+
+States are difficult
+
+
+What is Hadoop? 
+Really a collection of tools
+
+
+ETL you have done this your whole career. Give some examples. How about the weather data set? Already cleansed, though. 
+from current work. 

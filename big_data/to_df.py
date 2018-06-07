@@ -21,4 +21,3 @@ def to_df(path):
 if __name__ == '__main__':
     #df  = to_df('paulhtremblay/noaa/data/1901/029070-99999-1901.gz')
     df  = to_df('paulhtremblay/noaa/data/1991')
-        

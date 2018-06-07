@@ -6,9 +6,9 @@
   "signals": [],
   "data": [
   {
-    "name": "states",
+    "name": "counties",
     "url": "us-10m.json",
-    "format": {"type": "topojson", "feature": "states"},
+    "format": {"type": "topojson", "feature": "counties"},
     "transform": [
       {
         "type": "geopath",
@@ -49,7 +49,7 @@
 "marks": [
   {
     "type": "path",
-    "from": {"data": "states"},
+    "from": {"data": "counties"},
     "encode": {
       "enter": {
         "fill": {"value": "#dedede"},
@@ -65,11 +65,11 @@
   "from": {"data": "airports2"},
   "encode": {
     "enter": {
-      "size": {"scale": "size", "field": "num"},
       "fill": {"value": "steelblue"},
       "fillOpacity": {"value": 0.8},
       "stroke": {"value": "white"},
-      "strokeWidth": {"value": 1.5}
+      "strokeWidth": {"value": 1.5},
+	   "color": {"field": "num", "type": "ordinal"}
     },
     "update": {
       "x": {"field": "x"},

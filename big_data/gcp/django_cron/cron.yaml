@@ -1,0 +1,8 @@
+cron:
+- description: "test does nothing"
+  url: /cron/minute/
+  schedule: every 24 hours
+
+- description: "daily summary job"
+  url: /cron/two-projects/
+  schedule: every 24 hours

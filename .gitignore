@@ -95,3 +95,6 @@ big_data/maps/temp_data/*
 big_data/temp_data/*
 big_data/r/.Rhistory
 big_data/maps/us-10m.json
+.DS_Store
+big_data/maps/*.png
+big_data/gcp/sample*.txt

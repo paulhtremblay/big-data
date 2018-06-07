@@ -41,6 +41,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['paul-henry-tremblay.appspot.com', 
         '127.0.0.1',
+        'data-dev-dot-paul-henry-tremblay.appspot.com',
+        'data-dev.paul-henry-tremblay.appspot.com',
         ]
 
 

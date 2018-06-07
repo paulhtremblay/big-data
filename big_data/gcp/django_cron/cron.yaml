@@ -5,4 +5,5 @@ cron:
 
 - description: "daily summary job"
   url: /cron/two-projects/
-  schedule: every 24 hours
+  schedule: every 1 minutes
+  target: data-dev

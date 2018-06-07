@@ -2,5 +2,5 @@ include *.py
 include MANIFEST
 include MANIFEST.in
 include test/test_all.py
-recursive-include asciitomathml *
+recursive-include python_tools*
 recursive-include examples *

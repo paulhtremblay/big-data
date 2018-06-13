@@ -1,12 +1,12 @@
 from bokeh.plotting  import figure, show
 from bokeh.models import Legend
-from numpy import histogram
+import numpy
 
 def hist(nums, bins = None, legend =  None):
     if bins:
-        hist, edges = histogram(nums, bins=bins)
+        hist, edges = numpy.histogram(nums, bins=bins)
     else:
-        hist, edges = histogram(nums)
+        hist, edges = numpy.histogram(nums)
     p = figure()
     r = p.quad(top = hist, bottom=0, left=edges[:-1], right=edges[1:], alpha = .4)
     if legend !=  None:
@@ -14,7 +14,7 @@ def hist(nums, bins = None, legend =  None):
                 (legend , [r]),
                 ], location=(10, 0))
         p.add_layout(legend, 'right')
-        legend.background_fill_color = "green"
+        #legend.background_fill_color = "green"
     show(p)
 
 if __name__ == '__main__':

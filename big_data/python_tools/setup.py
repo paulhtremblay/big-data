@@ -8,7 +8,7 @@ def read(fname):
 
 
 setup(name="python_big_data_tools",
-    version= ".1" ,
+    version= ".2" ,
     description="tools to manipulate data",
     long_description=read('README.rst'),
     author="Paul Tremblay",

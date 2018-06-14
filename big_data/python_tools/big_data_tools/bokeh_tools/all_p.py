@@ -7,3 +7,8 @@ try:
     from .bar import *
 except ImportError:
     from bar import *
+
+try:
+    from .box_plot import *
+except ImportError:
+    from box_plot import *

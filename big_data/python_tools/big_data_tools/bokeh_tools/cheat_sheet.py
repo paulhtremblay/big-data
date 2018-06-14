@@ -6,5 +6,4 @@ client.query("""slelect * from foo""")
 
 
 from bokeh.models import NumeralTickFormatter
-
-    p.yaxis.formatter=NumeralTickFormatter(format="0,")
+p.yaxis.formatter=NumeralTickFormatter(format="0,")

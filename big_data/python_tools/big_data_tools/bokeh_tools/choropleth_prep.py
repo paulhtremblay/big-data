@@ -28,6 +28,16 @@ class Chorpleth:
         shutil.rmtree(temp_dir)
         self.dict = {}
         self.points_dict = {}
+        for counter, i in enumerate(names):
+            #getting rid of small territories belonging to AK
+            if not self.points_dict.get(i):
+                self.points_dict[i] = []
+            if i == 'AK':
+                if max(xs[counter]) < 0:
+                    self.points_dict[i].append((xs[counter], ys[counter]))
+            else:
+                self.points_dict[i].append((xs[counter], ys[counter]))
+        return
         for counter, i in enumerate(xs):
             self.dict[names[counter]] = geometry.Polygon(list(zip(i, ys[counter]))[0:-1])
             self.points_dict[names[counter]] = (i, ys[counter])

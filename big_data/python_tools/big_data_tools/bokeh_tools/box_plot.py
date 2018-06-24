@@ -27,7 +27,7 @@ def make_box_raw(p, cats, upper, lower, q1, q2, q3, out):
     for k, v in out.items():
         for point in v:
             p.circle([k], [point], size=6, color="#F38630", fill_alpha=0.6)
-    show(p)
+    return p
 
 def zip_data(cats, data):
     zip_data = list(zip(*data))
@@ -37,8 +37,9 @@ def zip_data(cats, data):
             outs[i] = zip_data[5][counter]
     return zip_data, outs
 
-def box_plot(cats, data, title=None):
-    p = figure(tools="save", background_fill_color="#EFE8E2", title=title, x_range=cats)
+def box_plot(cats, data, p = None):
+    if not p:
+        p = figure(tools="save", background_fill_color="#EFE8E2", x_range=cats)
     f, outs = zip_data(cats, get_quantiles(data))
-    make_box_raw(p, cats, f[0], f[1], f[2], f[3], f[4], outs)
+    return make_box_raw(p, cats, f[0], f[1], f[2], f[3], f[4], outs)
 

@@ -11,4 +11,9 @@ def bar(labels, nums, height = 500, title = None, p = None):
     return p
 
 if __name__ == '__main__':
-    bar(['first', 'second', 'third', 'fourth'], [1, 2, 3,4])
+    #p = bar(['first', 'second', 'third', 'fourth'], [1, 2, 3,4])
+    #show(p)
+    labels = ['first', 'second', 'third', 'fourth']
+    p = figure(x_range=labels, plot_height=500, plot_width = 1000, title="my test title")
+    bar(labels, [1, 2, 3,4], p =p)
+    show(p)

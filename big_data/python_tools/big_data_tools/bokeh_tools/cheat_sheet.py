@@ -10,6 +10,16 @@ from bokeh.palettes import *
 # make_us_map(the_type = 'state', default_color="blue", data = data, # palette=Oranges[9])
 # see https://bokeh.pydata.org/en/latest/docs/reference/palettes.html
 
+#client.query("""slelect * from foo""")
 
 from bokeh.models import NumeralTickFormatter
-p.yaxis.formatter=NumeralTickFormatter(format="0,")
+from bokeh.plotting import figure, show, output_file
+#p.yaxis.formatter=NumeralTickFormatter(format="0,")
+#p.xaxis.formatter=NumeralTickFormatter(format="0,")
+
+# to get all graphs wrapper
+from big_data_tools.bokeh_tools.all_p import *
+
+
+p = figure(x_range=labels, plot_height=500,  title="my test title")
+print('{x:,}'.format(x = x))#commas

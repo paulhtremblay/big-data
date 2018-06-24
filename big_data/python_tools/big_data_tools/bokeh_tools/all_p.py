@@ -12,3 +12,8 @@ try:
     from .box_plot import *
 except ImportError:
     from box_plot import *
+
+try:
+    from .choropleth_us import *
+except ImportError:
+    from choropleth_us import *

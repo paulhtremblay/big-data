@@ -26,4 +26,9 @@ setup(name="python_big_data_tools",
     platforms='any',
     packages=['big_data_tools', 'big_data_tools/bokeh_tools'],
     #scripts=[script_name1, script_name2],
+    data_files=[('map_data',
+        ['big_data_tools/bokeh_tools/data/cb_2017_us_county_5m.zip',
+        'big_data_tools/bokeh_tools/data/cb_2017_us_state_5m.zip'
+        ])],
+
     )

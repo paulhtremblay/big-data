@@ -14,9 +14,9 @@ class Chorpleth:
     def __init__(self, the_type):
         assert the_type in ['state', 'county']
         if the_type == 'state':
-            path = 'data/cb_2017_us_state_5m.zip'
+            path = os.path.join(sys.prefix, 'map_data', 'cb_2017_us_state_5m.zip')
         else:
-            path = 'data/cb_2017_us_county_5m.zip'
+            path = os.path.join(sys.prefix, 'map_data', 'cb_2017_us_county_5m.zip')
         temp_dir = tempfile.mkdtemp()
         with zipfile.ZipFile(path) as zip_ref:
             zip_ref.extractall(temp_dir)

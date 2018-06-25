@@ -123,8 +123,13 @@ def _make_legends(data, palette):
         labels_dict[key] = labels[n]
     return labels_dict
 
+def f(x):
+    if x[0] == None:
+        return 0
+    return x[0]
+
 def _sort_all_data(xs, ys, data, legends):
-    t = sorted(zip(data,xs, ys, legends))
+    t = sorted(zip(data,xs, ys, legends),key=f)
     return [x[1] for x in t], [x[2] for x in t], [x[0] for x in t], [x[3] for x in t]
 
 def _filter_points(d, max_xs = -50, min_xs = -125):
@@ -145,14 +150,13 @@ def make_us_map(the_type, title = "test map", plot_width = 1100, plot_height = 7
     assert colors_dict == None or data == None
     choropleth = choropleth_prep.Chorpleth(the_type = the_type)
     d = _main_init_dict(_filter_points(choropleth.points_dict))
-    del(d['DC'])
+    #del(d['DC'])
     add_data(d,'data',  data)
     add_data(d,'legend', _make_legends(data, palette))
     xs, ys, data, legends = _sort_all_data(flatten(d, 'xs'), flatten(d, 'ys'),
             flatten(d, 'data'), flatten(d, 'legend'))
-    print(len(xs), len(data))
     assert len(data) == len(xs)
-    color_mapper = LinearColorMapper(palette=palette, low=0, high = 1)
+    color_mapper = LinearColorMapper(palette=palette)
     source = ColumnDataSource(data=dict(
                 x=xs,
                 y=ys,

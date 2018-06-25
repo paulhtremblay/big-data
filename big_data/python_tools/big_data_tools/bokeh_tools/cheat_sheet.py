@@ -20,6 +20,9 @@ from bokeh.plotting import figure, show, output_file
 # to get all graphs wrapper
 from big_data_tools.bokeh_tools.all_p import *
 
+# to change roation labels
+p.xaxis.major_label_orientation = "vertical"
+
 
 p = figure(x_range=labels, plot_height=500,  title="my test title")
 print('{x:,}'.format(x = x))#commas

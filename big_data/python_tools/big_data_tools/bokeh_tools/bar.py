@@ -5,7 +5,7 @@ def bar(labels, nums, height = 500, title = None, p = None):
     #output_file("bars.html")
     if not p:
         p = figure(x_range=labels, plot_height=height, title=title)
-    p.vbar(x=labels, top=nums, width=0.9)
+    p.vbar(x=labels, top=nums, width=0.9, legend="foo")
     p.xgrid.grid_line_color = None
     p.y_range.start = 0
     return p

@@ -1,5 +1,6 @@
 import sys
 import math
+import copy
 import numpy as np
 from bokeh.plotting import figure, show, output_file
 try:
@@ -9,6 +10,8 @@ except SystemError:
 
 from bokeh.palettes import Blues8
 from bokeh.palettes import Oranges
+from bokeh.models import ColumnDataSource
+from bokeh.models import ColorMapper, LogColorMapper, LinearColorMapper
 
 import random
 
@@ -44,72 +47,127 @@ def _get_args():
         type=str, default="continental_us")
     return parser.parse_args()
 
-def _get_points(the_dict,index, map_extent):
-    points = []
-    exclude = _get_exclude_dict(map_extent)
-    for key in list(the_dict.keys()):
-        if key in exclude :
-            continue
-        for i in the_dict[key]:
-            points.append(i[index])
-    return points
 
-def _reverse_palete(palette):
-    new_palette = []
-    pos = len(palette) - 1
-    while pos >= 0:
-        new_palette.append(palette[pos])
-        pos -= 1
-    return new_palette
 
-def make_colors(data, palette, reverse = True):
-    assert isinstance(data, dict)
-    if reverse == True:
-        palette = _reverse_palete(palette)
-    the_min = min(data.values())
-    the_max = max(data.values())
-    step = (the_max - the_min)/(len(palette) -1)
-    colors_dict = {}
-    if step == 0:
-        step = .01
-    for key in list(data.keys()):
-        colors_dict[key] = palette[math.floor((data[key]-the_min)/step)]
-    return colors_dict
+def _join_to_polygon_dict(polygon_dict, the_dict):
+    for key in list(polygon_dict.keys()):
+        pass
 
 def _get_colors(polygon_dict, colors_dict , default_color, map_extent):
     if colors_dict == None:
         colors_dict = {}
     colors = []
+    legends = []
     exclude = _get_exclude_dict(map_extent)
     for key in list(polygon_dict.keys()):
         if key in exclude :
             continue
         for i in polygon_dict[key]:
-            colors.append(colors_dict.get(key, default_color))
-    return colors
+            data = colors_dict.get(key)
+            if not data:
+                color = default_color
+                legend = 'na'
+            else:
+                color = data[0]
+                legend = data[1]
+            colors.append(color)
+            legends.append(legend)
+    return colors, legends
+
+def _main_init_dict(polygon_dict):
+    new_d = {}
+    for key in list(polygon_dict.keys()):
+        new_d[key] = {'xs':[], 'ys':[]}
+        for shape in polygon_dict[key]:
+            new_d[key]['xs'].append(shape[0])
+            new_d[key]['ys'].append(shape[1])
+    return new_d
+
+def flatten(the_dict, key):
+    l = []
+    for k in sorted(list(the_dict.keys())):
+        for i in the_dict[k][key]:
+            if i == None:
+                pass
+            l.append(i)
+    return l
+
+def add_data(polygon_dict, data_key, data_dict):
+    for key in list(polygon_dict.keys()):
+        polygon_dict[key][data_key] = []
+        for i in polygon_dict[key]['xs']:
+            polygon_dict[key][data_key].append(data_dict.get(key))
+
+def _make_legends(data, palette):
+    assert isinstance(data, dict)
+    the_min = min(data.values())
+    the_max = max(data.values())
+    step = (the_max - the_min)/(len(palette))
+    if step == 0:
+        step = .01
+    last = the_min
+    labels = []
+    next_ = the_max - 1
+    while next_ <= the_max:
+        next_ = last + step
+        labels.append('{last}: {next_}'.format(
+            next_ = round(next_,1),
+            last = round(last,1)
+            ))
+        last = next_
+    labels_dict= {}
+    for key in list(data.keys()):
+        n = math.floor((data[key]-the_min)/step)
+        if n == len(palette):
+            n -= 1
+        labels_dict[key] = labels[n]
+    return labels_dict
+
+def _sort_all_data(xs, ys, data, legends):
+    t = sorted(zip(data,xs, ys, legends))
+    return [x[1] for x in t], [x[2] for x in t], [x[0] for x in t], [x[3] for x in t]
+
+def _filter_points(d, max_xs = -50, min_xs = -125):
+    new_d ={}
+    for key in d:
+        new_d[key] = []
+        for counter, the_tuple in enumerate(d[key]):
+            if not (max(the_tuple[0]) > max_xs or min(the_tuple[0]) < min_xs):
+                new_d[key].append(the_tuple)
+    return new_d
 
 def make_us_map(the_type, title = "test map", plot_width = 1100, plot_height = 700,
         line_color = "white", line_width = 0.5, colors_dict = None,
         default_color = "white", map_extent = 'continental_us', data=None,
-        palette = Blues8):
+        palette = Blues8, reverse_palette = True):
+    if reverse_palette:
+        palette.reverse()
     assert colors_dict == None or data == None
     choropleth = choropleth_prep.Chorpleth(the_type = the_type)
-    xs = _get_points(choropleth.points_dict, 0, map_extent)
-    ys = _get_points(choropleth.points_dict, 1, map_extent)
-    if data:
-        colors_dict = make_colors(data, palette)
-    fill_colors = _get_colors(choropleth.points_dict,
-        colors_dict = colors_dict, default_color = default_color, map_extent = map_extent)
-    if fill_colors:
-        assert len(xs) == len(fill_colors)
+    d = _main_init_dict(_filter_points(choropleth.points_dict))
+    del(d['DC'])
+    add_data(d,'data',  data)
+    add_data(d,'legend', _make_legends(data, palette))
+    xs, ys, data, legends = _sort_all_data(flatten(d, 'xs'), flatten(d, 'ys'),
+            flatten(d, 'data'), flatten(d, 'legend'))
+    print(len(xs), len(data))
+    assert len(data) == len(xs)
+    color_mapper = LinearColorMapper(palette=palette, low=0, high = 1)
+    source = ColumnDataSource(data=dict(
+                x=xs,
+                y=ys,
+                data = data,
+                legend = legends,
+
+            ))
     p = figure(title=title, toolbar_location="left",
                plot_width=plot_width, plot_height=plot_height)
-    p.patches(xs, ys,
-              fill_alpha=0.7,
-              fill_color=fill_colors,
-              line_color=line_color, line_width=line_width)
-    show(p)
+    p.patches('x', 'y', source=source,
+           fill_color={'field': 'data', 'transform': color_mapper},
+           fill_alpha=0.7, line_color=line_color,
+           line_width=line_width, legend = 'legend')
 
+    show(p)
 
 if __name__ == '__main__':
     l = ['FL', 'CT', 'ND', 'ID', 'NC', 'AZ', 'LA', 'PR',
@@ -121,6 +179,7 @@ if __name__ == '__main__':
     data = {}
     for i in l:
         data[i] = random.random()
+    del(data['DC'])
     args = _get_args()
     make_us_map(the_type = args.type[0], default_color = args.default_color,
             map_extent = args.map_extent, data = data, palette = Oranges[9])

@@ -3,48 +3,13 @@ from bokeh.plotting import figure
 from bokeh.models import GraphRenderer, StaticLayoutProvider, Oval
 from bokeh.palettes import Spectral8
 from bokeh.io import show, output_file
+#from bokeh.models import Axis 
+
 
 from bokeh.models import ColumnDataSource, Range1d, LabelSet, Label
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-def _make_ads_dict(data, counter = 1, the_type = 'ads'):
-    assert isinstance(data, list)
-    the_dict = {}
-    for i in data:
-        if the_dict.get(i[0]) == None:
-            the_dict[i[0]]  =   {'pos':counter, 'edges' : []}
-            counter += 1
-        if the_type == 'ads':
-            the_dict[i[0]]['edges'].append(i[1])
-    return the_dict, counter
-
-def _make_skus_dict(data, counter):
-    skus_pos = {}
-    for i in data:
-        if skus_pos.get(i[1]) == None:
-            skus_pos[i[1]]  =   {'pos':counter}
-            counter += 1
-    return skus_pos
-
-def _make_edges(ads_pos, skus_pos, data, default_width = .5):
-    edge_widths =[default_width]
-    edge_colors =['red']
-    ed = {'start':[0], 'end':[0]}
-    for counter, i in enumerate(data.keys()):
-        ed['start'].append(0)
-        ed['end'].append(counter + 1)
-        edge_widths.append(default_width * data[i])
-        edge_colors.append('red')
-    for i in ads_pos.keys():
-        p =  ads_pos[i]['pos']
-        for j in ads_pos[i]['edges']:
-            edge_widths.append(default_width)
-            edge_colors.append('black')
-            ed['start'].append(p)
-            end = skus_pos.get(j, {}).get('pos')
-            ed['end'].append(end)
-    return ed, edge_widths, edge_colors
 
 def _make_fill_colors(ads_pos, skus_pos, user_color, 
         ad_color, sku_color):
@@ -71,7 +36,7 @@ def _make_layout_raw(the_dict, start_p = 1, start_x_value = -1,
     width = 0
     for counter, i  in enumerate(the_dict.keys()):
         width += 1
-        graph_layout[counter + start_p] = ((x_value, 1 - current_depth))
+        graph_layout[the_dict[i]['pos']] = ((x_value, 1 - current_depth))
         x_value += inc 
         if width == max_num + 1 :
             x_value = _init_start_layout(start_x_value, inc)
@@ -98,7 +63,50 @@ def _make_labels(graph_layout, ads_pos, skus_pos,  x_offset, y_offset):
                   x_offset=x_offset, y_offset=y_offset, source=source, render_mode='canvas')
     return labels
 
-def make_user_graph(data, data2, oval_height = 0.1, oval_width=0.2, branch_depth = .6, 
+
+def _make_node_indices(data):
+    d = {}
+    x = len(data.keys())
+    count = 1
+    for key in data.keys():
+        count += 1
+        for i in data[key]['skus']:
+            d[i] = True
+    return count + len(list(d.keys()))
+
+def _make_ads_dict(data):
+    ads_dict = {}
+    skus_dict = {}
+    for counter, key in enumerate(sorted(list(data.keys()))):
+        ads_dict[key] = {'edges':data[key]['skus'], 'pos':counter + 1}
+    counter += 2
+    for key in sorted(list(ads_dict.keys())):
+        for i in ads_dict[key]['edges']:
+            if skus_dict.get(i) == None:
+                skus_dict[i]  = {'pos': counter}
+                counter  += 1
+    return ads_dict, skus_dict
+
+def _make_edges(ads_pos, skus_pos, data, default_width = .5):
+    edge_widths =[default_width]
+    edge_colors =['red']
+    ed = {'start':[0], 'end':[0]}
+    for counter, i in enumerate(sorted(list(data.keys()))):
+        ed['start'].append(0)
+        ed['end'].append(ads_pos[i]['pos'])
+        edge_widths.append(default_width * data[i]['num_visits'])
+        edge_colors.append('red')
+    for i in ads_pos.keys():
+        p =  ads_pos[i]['pos']
+        for j in ads_pos[i]['edges']:
+            edge_widths.append(default_width)
+            edge_colors.append('black')
+            ed['start'].append(p)
+            end = skus_pos.get(j, {}).get('pos')
+            ed['end'].append(end)
+    return ed, edge_widths, edge_colors
+
+def make_user_graph(data, oval_height = 0.1, oval_width=0.2, branch_depth = .6, 
         user_color = Spectral8[0], ad_color = Spectral8[1] , sku_color = Spectral8[2],
         label_x_offset = -15, label_y_offset = 10, p =  None, 
         max_num_in_row = 5, line_width = .5
@@ -106,14 +114,15 @@ def make_user_graph(data, data2, oval_height = 0.1, oval_width=0.2, branch_depth
     if not p:
         p = figure(title="Test Ad Graph", x_range=(-1.1,1.1), y_range=(-1.1,1.1),
             tools="", toolbar_location=None, plot_width = 1000)
-    ads_pos, counter = _make_ads_dict(data)
-    skus_pos = _make_skus_dict(data, counter = counter)
+    #ads_pos, counter = _make_ads_dict(data)
+    #skus_pos = _make_skus_dict(data, counter = counter)
     graph = GraphRenderer()
     graph.node_renderer.glyph = Oval(height=oval_height, width=oval_width, fill_color="fill_color", name="text")
-    node_indices = list(range(len(ads_pos.keys()) + len(skus_pos.keys()) + 1))
+    node_indices = [x for x in range(_make_node_indices(data))]
+    ads_pos, skus_pos =  _make_ads_dict(data)
     graph.node_renderer.data_source.data = dict(index=node_indices, fill_color=_make_fill_colors(
         ads_pos, skus_pos,  ad_color = ad_color, sku_color = sku_color, user_color = user_color))
-    eds, edge_widths, edge_colors = _make_edges(ads_pos, skus_pos, data2, default_width =  line_width)
+    eds, edge_widths, edge_colors = _make_edges(ads_pos, skus_pos, data, default_width =  line_width)
     graph.edge_renderer.data_source.data = eds
     graph_layout= _make_layout(ads_pos = ads_pos, skus_pos = skus_pos,  depth = branch_depth, 
             max_num = max_num_in_row)
@@ -129,41 +138,22 @@ def make_user_graph(data, data2, oval_height = 0.1, oval_width=0.2, branch_depth
     return  p
 
 if __name__ == '__main__':
-    data =  [('ad1','sku1'), ('ad1','sku2'), ('ad2','sku2')]
-    #make_user_graph(data)
-    #data =  [('ad1','sku1'), ('ad1','sku2'), ('ad2','sku2'),('ad3', 'sku3')]
-    data =  [('ad1','sku1'), 
-            ('ad1','sku2'), 
-            ('ad2','sku2'),
-            ('ad3', 'sku3'),
-            ('ad1', 'sku3'),
-            ('ad2', 'sku3'),
-            ('ad4', 'sku3'),
-            ('ad4', 'sku1'),
-            ('ad4', 'sku2'),
-            ('ad5', 'sku1'),
-            ('ad6', 'sku1'),
-            ('ad7', 'sku1'),
-            ('ad8', 'sku1'),
-            ('ad9', 'sku1'),
-            ('ad10', 'sku3'),
-            ('ad11', 'sku3'),
-            ('ad12', 'sku3'),
-            ]
-    data2 =  { 'ad1':1,
-               'ad2':1,
-               'ad3':1,
-               'ad4':1,
-               'ad5':3,
-               'ad6':3,
-               'ad7':1,
-               'ad8':5,
-               'ad9':1,
-               'ad10':1,
-               'ad11':1,
-               'ad12':1,
+    data3 =  { 'ad1':{'num_visits':1,'skus':['sku1', 'sku2',  'sku3', ]},
+        'ad2':{'num_visits':1, 'skus':['sku2']},
+        'ad3':{'num_visits':1,'skus':['sku3']},
+        'ad4':{'num_visits':1,'skus':['sku3', 'sku1', 'sku2']},
+        'ad5':{'num_visits':3, 'skus':['sku1']},
+        'ad6':{'num_visits':3, 'skus':['sku1']},
+        'ad7':{'num_visits':1, 'skus':['sku1']},
+        'ad8':{'num_visits':10, 'skus':['sku1']},
+        'ad9':{'num_visits':1, 'skus':['sku1']},
+        'ad10':{'num_visits':1, 'skus':['sku3']},
+        'ad11':{'num_visits':1, 'skus':['sku3']},
+        'ad12':{'num_visits':1, 'skus':['sku3']},
             }
     p = figure(title="Test Ad Graph", x_range=(-1.1,1.1), y_range=(-1.1,1.1),
             tools="", toolbar_location=None, plot_width = 1000)
-    make_user_graph(data, data2, p=p, max_num_in_row=12)
+    make_user_graph(data3,  p=p, max_num_in_row=12)
+    p.grid.visible = False
+    p.axis.visible = False
     show(p)

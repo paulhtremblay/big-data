@@ -1,4 +1,5 @@
 import sys
+from collections import OrderedDict
 from bokeh.plotting import figure
 from bokeh.models import GraphRenderer, StaticLayoutProvider, Oval
 from bokeh.palettes import Spectral8
@@ -77,10 +78,10 @@ def _make_node_indices(data):
 def _make_ads_dict(data):
     ads_dict = {}
     skus_dict = {}
-    for counter, key in enumerate(sorted(list(data.keys()))):
+    for counter, key in enumerate(list(data.keys())):
         ads_dict[key] = {'edges':data[key]['skus'], 'pos':counter + 1}
     counter += 2
-    for key in sorted(list(ads_dict.keys())):
+    for key in list(ads_dict.keys()):
         for i in ads_dict[key]['edges']:
             if skus_dict.get(i) == None:
                 skus_dict[i]  = {'pos': counter}
@@ -91,7 +92,7 @@ def _make_edges(ads_pos, skus_pos, data, default_width = .5):
     edge_widths =[default_width]
     edge_colors =['red']
     ed = {'start':[0], 'end':[0]}
-    for counter, i in enumerate(sorted(list(data.keys()))):
+    for counter, i in enumerate(list(data.keys())):
         ed['start'].append(0)
         ed['end'].append(ads_pos[i]['pos'])
         edge_widths.append(default_width * data[i]['num_visits'])
@@ -138,7 +139,7 @@ def make_user_graph(data, oval_height = 0.1, oval_width=0.2, branch_depth = .6,
     return  p
 
 if __name__ == '__main__':
-    data3 =  { 'ad1':{'num_visits':1,'skus':['sku1', 'sku2',  'sku3', ]},
+    data_ =  { 'ad1':{'num_visits':1,'skus':['sku1', 'sku2',  'sku3', ]},
         'ad2':{'num_visits':1, 'skus':['sku2']},
         'ad3':{'num_visits':1,'skus':['sku3']},
         'ad4':{'num_visits':1,'skus':['sku3', 'sku1', 'sku2']},
@@ -151,9 +152,23 @@ if __name__ == '__main__':
         'ad11':{'num_visits':1, 'skus':['sku3']},
         'ad12':{'num_visits':1, 'skus':['sku3']},
             }
+    data =  [ ('ad1',{'num_visits':1,'skus':['sku1', 'sku2',  'sku3', ]}),
+        ('ad2',{'num_visits':1, 'skus':['sku2']}),
+        ('ad3',{'num_visits':1,'skus':['sku3']}),
+        ('ad4',{'num_visits':1,'skus':['sku3', 'sku1', 'sku2']}),
+        ('ad5',{'num_visits':3, 'skus':['sku1']}),
+        ('ad6',{'num_visits':3, 'skus':['sku1']}),
+        ('ad7',{'num_visits':1, 'skus':['sku1']}),
+        ('ad8',{'num_visits':10, 'skus':['sku1']}),
+        ('ad9',{'num_visits':1, 'skus':['sku1']}),
+        ('ad10',{'num_visits':1, 'skus':['sku3']}),
+        ('ad11',{'num_visits':1, 'skus':['sku3']}),
+        ('ad12',{'num_visits':1, 'skus':['sku3']}),
+            ]
+    data = OrderedDict(data)
     p = figure(title="Test Ad Graph", x_range=(-1.1,1.1), y_range=(-1.1,1.1),
             tools="", toolbar_location=None, plot_width = 1000)
-    make_user_graph(data3,  p=p, max_num_in_row=12)
+    make_user_graph(data,  p=p, max_num_in_row=12)
     p.grid.visible = False
     p.axis.visible = False
     show(p)

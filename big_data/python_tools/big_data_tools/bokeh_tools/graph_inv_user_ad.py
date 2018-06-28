@@ -22,9 +22,13 @@ def _make_fill_colors(ads_pos, skus_pos, user_color,
 def _make_increment(num, width, max_num):
     if num > max_num:
         num = max_num
+    if num == 1:
+        return width/2
     return width/(num -1 )
 
-def _init_start_layout(start_value, inc):
+def _init_start_layout(start_value, inc, num_left):
+    if num_left == 1:
+        return   start_value + 2.2/2
     return start_value  
 
 def _make_layout_raw(the_dict, start_p = 1, start_x_value = -1, 
@@ -33,16 +37,17 @@ def _make_layout_raw(the_dict, start_p = 1, start_x_value = -1,
     max_num = the maximum number for 1 row
     """
     inc = _make_increment(len(list(the_dict.keys())),2, max_num)
-    x_value = _init_start_layout(start_x_value, inc)
+    x_value = _init_start_layout(start_x_value, inc, len(list(the_dict.keys())))
     width = 0
     for counter, i  in enumerate(the_dict.keys()):
         width += 1
         graph_layout[the_dict[i]['pos']] = ((x_value, 1 - current_depth))
         x_value += inc 
-        if width == max_num + 1 :
-            x_value = _init_start_layout(start_x_value, inc)
+        if width == max_num  :
+            x_value = _init_start_layout(start_x_value, inc, len(list(the_dict.keys())) - counter - 1)
             current_depth += depth
             width = 0
+            inc = _make_increment(len(list(the_dict.keys())) - counter - 1, 2, max_num)
     return graph_layout, counter + start_p + 1, current_depth + depth
 
 def _make_layout(ads_pos, skus_pos,  start_p = 1, start_x_value = -1, 
@@ -168,7 +173,7 @@ if __name__ == '__main__':
     data = OrderedDict(data)
     p = figure(title="Test Ad Graph", x_range=(-1.1,1.1), y_range=(-1.1,1.1),
             tools="", toolbar_location=None, plot_width = 1000)
-    make_user_graph(data,  p=p, max_num_in_row=12)
+    make_user_graph(data,  p=p, max_num_in_row=13)
     p.grid.visible = False
     p.axis.visible = False
     show(p)

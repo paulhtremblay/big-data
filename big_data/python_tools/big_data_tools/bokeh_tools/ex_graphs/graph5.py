@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 
 G = nx.DiGraph()
 G.add_edges_from(
-    [('A', 'B'), ('A', 'C'), ('A', 'D'),])
+    [('User', 'ad1'), ('User', 'ad2'), ('User', 'ad3'),('ad3', 'sku1'),
+        ('ad2', 'sku1'), ('ad1', 'sku2')])
 
 val_map = {'A': 1.0,
            'D': 0.5714285714285714,
@@ -12,7 +13,7 @@ val_map = {'A': 1.0,
 values = [val_map.get(node, 0.25) for node in G.nodes()]
 
 # Specify the edges you want here
-red_edges = [('A', 'C'), ('A', 'B')]
+red_edges = [('User', 'ad2'), ('User', 'ad3')]
 edge_colours = ['black' if not edge in red_edges else 'red'
                 for edge in G.edges()]
 black_edges = [edge for edge in G.edges() if edge not in red_edges]

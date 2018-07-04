@@ -47,10 +47,10 @@ class GraphTwoLevel:
             graph_layout[the_dict[i]['pos']] = ((x_value, 1 - current_depth))
             x_value += inc 
             if width == max_num  :
-                x_value = _init_start_layout(start_x_value, inc, len(list(the_dict.keys())) - counter - 1)
+                x_value = self._init_start_layout(start_x_value, inc, len(list(the_dict.keys())) - counter - 1)
                 current_depth += depth
                 width = 0
-                inc = _make_increment(len(list(the_dict.keys())) - counter - 1, 2, max_num)
+                inc = self._make_increment(len(list(the_dict.keys())) - counter - 1, 2, max_num)
         return graph_layout, counter + start_p + 1, current_depth + depth
 
     def _make_layout(self, second_level_pos, third_level_pos,  start_p = 1, start_x_value = -1, 

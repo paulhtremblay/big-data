@@ -20,4 +20,4 @@ labels = LabelSet(x='x', y='y', text='club', source=source,
 print(node_labels)
 nx.get_node_attributes(G, 'club')
 plot.renderers.append(labels)
-#show(plot)
+show(plot)

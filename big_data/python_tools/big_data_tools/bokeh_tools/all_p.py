@@ -22,3 +22,8 @@ try:
     from .graph_inv_user_ad import *
 except ImportError:
     from graph_inv_user_ad import *
+
+try:
+    from .graph_two_levels import *
+except ImportError:
+    from graph_two_levels import *

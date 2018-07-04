@@ -17,3 +17,8 @@ try:
     from .choropleth_us import *
 except ImportError:
     from choropleth_us import *
+
+try:
+    from .graph_inv_user_ad import *
+except ImportError:
+    from graph_inv_user_ad import *

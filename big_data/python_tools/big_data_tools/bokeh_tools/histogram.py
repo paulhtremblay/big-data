@@ -2,7 +2,7 @@ from bokeh.plotting  import figure, show
 from bokeh.models import Legend
 import numpy
 
-def histogram(nums, bins = None, legend =  None):
+def histogram(nums, p= None,  bins = None, legend =  None):
     if bins:
         hist, edges = numpy.histogram(nums, bins=bins)
     else:

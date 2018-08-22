@@ -2,6 +2,7 @@ import sys
 import math
 import copy
 import numpy as np
+from numpy import nan
 from bokeh.plotting import figure, show, output_file
 try:
     from . import  choropleth_prep
@@ -90,7 +91,7 @@ def flatten(the_dict, key):
             if i == None:
                 pass
             l.append(i)
-    return l
+    return [x if x != None else nan for x in l]
 
 def add_data(polygon_dict, data_key, data_dict):
     for key in list(polygon_dict.keys()):
@@ -150,13 +151,13 @@ def make_us_map(the_type, title = "test map", plot_width = 1100, plot_height = 7
     assert colors_dict == None or data == None
     choropleth = choropleth_prep.Chorpleth(the_type = the_type)
     d = _main_init_dict(_filter_points(choropleth.points_dict))
-    #del(d['DC'])
     add_data(d,'data',  data)
     add_data(d,'legend', _make_legends(data, palette))
     xs, ys, data, legends = _sort_all_data(flatten(d, 'xs'), flatten(d, 'ys'),
             flatten(d, 'data'), flatten(d, 'legend'))
-    assert len(data) == len(xs)
     color_mapper = LinearColorMapper(palette=palette)
+    color_mapper.nan_color = default_color
+    assert len(data) == len(xs)
     source = ColumnDataSource(data=dict(
                 x=xs,
                 y=ys,
@@ -184,6 +185,7 @@ if __name__ == '__main__':
     for i in l:
         data[i] = random.random()
     del(data['DC'])
+    del(data['TX'])
     args = _get_args()
     make_us_map(the_type = args.type[0], default_color = args.default_color,
             map_extent = args.map_extent, data = data, palette = Oranges[9])

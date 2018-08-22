@@ -32,15 +32,18 @@ class Chorpleth:
             #getting rid of small territories belonging to AK
             if not self.points_dict.get(i):
                 self.points_dict[i] = []
+            self.points_dict[i].append((xs[counter], ys[counter]))
+            """
             if i == 'AK':
                 if max(xs[counter]) < 0:
                     self.points_dict[i].append((xs[counter], ys[counter]))
             else:
                 self.points_dict[i].append((xs[counter], ys[counter]))
-        return
+            """
         for counter, i in enumerate(xs):
-            self.dict[names[counter]] = geometry.Polygon(list(zip(i, ys[counter]))[0:-1])
-            self.points_dict[names[counter]] = (i, ys[counter])
+            if not self.dict.get(names[counter]):
+                self.dict[names[counter]] = []
+            self.dict[names[counter]].append(geometry.Polygon(list(zip(i, ys[counter]))[0:-1]))
 
     def add_names(slef, indices, itererator, names):
         for i in indices:
@@ -77,9 +80,10 @@ class Chorpleth:
     def get_id_of_shape(self, points):
         p = geometry.Point(points)
         for key in list(self.dict.keys()):
-            sh = self.dict[key]
-            if sh.contains(p):
-                return key
+            shapes = self.dict[key]
+            for sh in shapes:
+                if sh.contains(p):
+                    return key
         return None
 
     def get_shape(self, the_id):
@@ -89,6 +93,6 @@ class Chorpleth:
         return self.points_dict.get(the_id)
 
 if __name__ == '__main__':
-    choropleth = Chorpleth(the_type = 'county')
+    choropleth = Chorpleth(the_type = 'state')
     print(choropleth.get_id_of_shape((-71.097320, 42.338124)))
 

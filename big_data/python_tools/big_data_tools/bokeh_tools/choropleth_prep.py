@@ -92,6 +92,16 @@ class Chorpleth:
     def get_points(self, the_id):
         return self.points_dict.get(the_id)
 
+    def get_points_flatten(self, the_id):
+        xs = []
+        ys = []
+        if not self.points_dict.get(the_id):
+            return None, None
+        for  i in self.points_dict[the_id]:
+            xs += i[0]
+            ys += i[1]
+        return (xs, ys)
+
 if __name__ == '__main__':
     choropleth = Chorpleth(the_type = 'state')
     print(choropleth.get_id_of_shape((-71.097320, 42.338124)))

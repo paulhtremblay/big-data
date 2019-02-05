@@ -1,0 +1,15 @@
+output*/*
+data/*
+checkpoint_dir/*
+checkpoint_parquet1/*
+input_stream_csv1/*
+input_stream_csv2/*
+python_tools/big_data_tools/bokeh_tools/cb_2017_us_county_5m.zip
+python_tools/big_data_tools/bokeh_tools/cb_2017_us_state_5m.zip
+stream1.csv
+stream2.csv
+stream3.csv
+stream_dir4/*
+stream_dir5/*
+stream_dir_parquet1/*
+

@@ -7,6 +7,8 @@ import pprint
 from bokeh.plotting import figure, show
 from bokeh.layouts import gridplot
 import pprint
+# /home/henry/Envs/class/lib/python3.5/site-packages/scipy/stats/distributions.py
+from scipy.stats import distributions
 pp = pprint.PrettyPrinter(indent = 4)
 
 D = {'norm': stats.norm,
@@ -14,20 +16,12 @@ D = {'norm': stats.norm,
     'lognorm':stats.lognorm,
         }
 
-def _sse(y1, y2):
-    pp.pprint(y1)
-    pp.pprint(y2)
-    assert False
-    return math.sqrt(sum((y1- y2) * (y1- y2))/len(y1))
 
 def sse(y1, y2):
     return math.sqrt(sum((y1- y2) * (y1- y2))/len(y1))
 
 def get_dist(dist_string):
     return D[dist_string]
-
-def make_plot():
-    pass
 
 def pp_plot(data, dist, sparams = None, title= None):
     if not title:
@@ -53,7 +47,6 @@ def find_best(data, dists):
         p, e =pp_plot(data, i, params) 
         ps.append(p)
         es.append((i, e))
-    print(es)
     grid = gridplot(ps, ncols = 2, height=500, 
             width = 500)
     show(grid)
@@ -84,14 +77,28 @@ def _find_best(data):
     show(grid)
     return least_sse, best_f
 
+def test_ppf_cdf():
+    """ppf is percentiles"""
+    loc = 0
+    scale =1
+    ppf = .9
+    #inverse functions
+    result = stats.norm.cdf(x= stats.norm.ppf(q= ppf, loc=loc, scale=scale), loc=loc, scale = scale)
+    assert round(ppf,6) == round(result,6)
+    #what is the number for which 90% lies to the left
+    x = stats.norm.ppf(q= .9, loc=loc, scale=scale)
+    #1.28, the Z score for a normal dist
+    #what are lies to the left of 1.28?
+    per = stats.norm.cdf(x=1.28, loc= loc, scale = scale)
+    #.9
+
 if __name__ == '__main__':
-    b = 2.62
-    data = stats.pareto.rvs(b, loc = 3, size= 1000)
+    #b = 2.62
+    #data = stats.pareto.rvs(b, loc = 3, size= 1000)
+    #dists are dir(distributions)
     data = [.83, .88, .88, 1.4, 1.09, 1.12, 1.29, 1.31,
             1.48, 1.49, 1.59, 1.62, 1.65, 1.71, 1.83]
     dists = ['pareto', 'norm', 'lognorm']
-    var = np.var(data, ddof = 1)
-    s = math.sqrt(var)
     d = stats.describe(data)
-    print(d.variance)
+    test_ppf_cdf()
     #find_best(data, dists)

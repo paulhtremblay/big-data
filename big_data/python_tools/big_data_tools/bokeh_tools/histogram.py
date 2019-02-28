@@ -1,5 +1,4 @@
 from bokeh.plotting  import figure, show
-from bokeh.models import Legend
 import numpy as np
 
 def hist(nums):

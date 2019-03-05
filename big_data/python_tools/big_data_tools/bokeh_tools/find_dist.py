@@ -14,6 +14,7 @@ pp = pprint.PrettyPrinter(indent = 4)
 D = {'norm': stats.norm,
     'pareto':stats.pareto,
     'lognorm':stats.lognorm,
+    'poisson':stats.poisson,
         }
 
 
@@ -38,7 +39,22 @@ def pp_plot(data, dist, sparams = None, title= None):
     e = sse(series[0][1], y2)
     return p, e
 
-def find_best(data, dists):
+def make_pps(data, dist, sparams = None, title= None):
+    if not title:
+        title = "{dist} QQ Plot".format(dist = dist)
+    series = probplot(data, dist=dist, sparams= sparams)
+    p = figure(title=title)
+    x = series[0][0]
+    y = series[0][1]
+    slope = series[1][0]
+    intercept = series[1][1]
+    y2 = [z * slope + intercept for z in x]
+    p.scatter(series[0][0],series[0][1], fill_color="red")
+    p.line(x,y2, line_width =2)
+    return p
+
+#this seems wrong with the fit
+def _make_pps(data, dists):
     ps = []
     es = []
     for i in dists:

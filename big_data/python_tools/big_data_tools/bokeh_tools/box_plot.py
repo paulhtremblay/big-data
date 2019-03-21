@@ -1,7 +1,6 @@
-import sys
 from collections import OrderedDict
 import numpy as np
-from bokeh.plotting import figure, show, output_file
+from bokeh.plotting import figure
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -38,6 +37,18 @@ def zip_data(cats, data):
     return zip_data, outs
 
 def box_plot(cats, data, p = None):
+    """
+    cats: a list of labels
+    data: a list of lists
+    Example:
+    cats = ['a', 'b']
+    data = [[1, 2, 3], [4, 5, 6]]
+
+    Returns: p, the figure()
+    """
+    assert len(cats) == len(data)
+    assert isinstance(cats, list)
+    assert isinstance(data, list)
     if not p:
         p = figure(tools="save", background_fill_color="#EFE8E2", x_range=cats)
     f, outs = zip_data(cats, get_quantiles(data))

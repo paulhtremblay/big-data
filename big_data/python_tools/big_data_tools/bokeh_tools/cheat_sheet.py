@@ -35,3 +35,5 @@ p.xaxis.major_label_orientation = "vertical"
 
 p = figure(x_range=labels, plot_height=500,  title="my test title")
 print('{x:,}'.format(x = x))#commas
+
+p.yaxis.axis_label = "Pressure"

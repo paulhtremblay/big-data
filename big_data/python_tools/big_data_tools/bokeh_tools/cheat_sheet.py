@@ -20,7 +20,7 @@ p.yaxis.formatter=NumeralTickFormatter(format="0,")
 
 p = figure(plot_width=800, plot_height=300, title="Title")
 
-=======
+"======="
 from bokeh.models import NumeralTickFormatter
 from bokeh.plotting import figure, show, output_file
 #p.yaxis.formatter=NumeralTickFormatter(format="0,")

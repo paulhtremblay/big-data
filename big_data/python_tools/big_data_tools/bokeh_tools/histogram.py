@@ -9,4 +9,3 @@ def hist(nums):
 
 if __name__ == '__main__':
     p = hist([1,1,1,1,15,5,5, 10, 10,10,8])
-    s

@@ -16,6 +16,31 @@ def point_is_territory(x):
         if max(i[0]) > 0:
             return True
 
+def get_alaska_hawaii_counties(needed_state):
+    fips = {}
+    final = {}
+    with open('data/zip_fips.json', 'r') as read_obj:
+        zips = json.load(read_obj)
+    for key_zip in zips.keys():
+        fip = zips[key_zip]['fips']
+        state = zips[key_zip]['state']
+        fips[fip] = state
+    choropleth=  choropleth_prep.Chorpleth('county')
+    points = choropleth.points_dict
+    for key in points.keys():
+        state  = fips.get(key)
+        if  state != needed_state:
+            continue
+        l = choropleth.get_points(key)
+        if point_is_territory(l):
+            continue
+        final[key] = {'x':[], 'y':[] }
+        for i in l:
+            final[key]['x'] += i[0]
+            final[key]['y'] += i[1]
+            final[key]['state'] = state
+    return final
+
 def move_hawaii():
     choropleth=  choropleth_prep.Chorpleth('state')
     points = choropleth.points_dict
@@ -63,6 +88,28 @@ def resize_alaska_counties():
     d = {'x':xs, 'y': ys}
     return d
 
+def resize_move_alaska_counties(d):
+    for key in d.keys():
+        l = []
+        for i in d[key]['x']:
+            l.append(i * .5 - 30)
+        d[key]['x'] = l
+        l2 = []
+        for i in d[key]['y']:
+            l2.append(i * .5 - 8)
+        d[key]['y'] = l2
+
+def move_hawaii_counties(d):
+    for key in d.keys():
+        l = []
+        for i in d[key]['x']:
+            l.append(i + 35)
+        d[key]['x'] = l
+        l2 = []
+        for i in d[key]['y']:
+            l2.append(i + 5)
+        d[key]['y'] = l2
+
 def make_counties_no_territories_with_move():
     fips = {}
     with open('data/zip_fips.json', 'r') as read_obj:
@@ -86,6 +133,12 @@ def make_counties_no_territories_with_move():
             final[key]['x'] += i[0]
             final[key]['y'] += i[1]
             final[key]['state'] = state
+    alaska_counties =  get_alaska_hawaii_counties('AK')
+    hawaii_counties =  get_alaska_hawaii_counties('HI')
+    resize_move_alaska_counties(alaska_counties)
+    move_hawaii_counties(hawaii_counties)
+    final.update(alaska_counties)
+    final.update(hawaii_counties)
     with open('data/counties_non_territories_with_move.json', 'w') as write_obj:
         json.dump(final, write_obj)
 

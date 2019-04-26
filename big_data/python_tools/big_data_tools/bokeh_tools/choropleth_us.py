@@ -155,9 +155,6 @@ def make_us_map(the_type, title = "test map", plot_width = 1100, plot_height = 7
     add_data(d,'legend', _make_legends(data, palette))
     xs, ys, data, legends = _sort_all_data(flatten(d, 'xs'), flatten(d, 'ys'),
             flatten(d, 'data'), flatten(d, 'legend'))
-    print(data)
-    print(legends)
-    return
     color_mapper = LinearColorMapper(palette=palette)
     color_mapper.nan_color = default_color
     assert len(data) == len(xs)

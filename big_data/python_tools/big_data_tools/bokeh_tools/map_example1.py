@@ -1,11 +1,11 @@
+"""
+Examples on how to make just diffrent types of maps, using JSON objects in data.
+These maps have no fill. They are just outlines.
+"""
 import pprint
 pp =pprint.PrettyPrinter(indent = 4)
 from bokeh.plotting import figure, show, output_file
-from numpy import nan
 from bokeh.layouts import gridplot
-from bokeh.models import ColumnDataSource
-from bokeh.models import Legend
-import numpy as np
 import json
 
 def main():
@@ -51,7 +51,15 @@ def main():
                 ],
             fill_color = ['white' for x in states2.keys()]
             )
-    grid = gridplot([p1, p2, p3, p4,  p7],  
+    with open('data/counties_non_territories_with_move.json', 'r') as read_obj:
+        counties_move = json.load(read_obj) 
+    p8 = figure(width=map_width, height = int(round(4/5 * map_width)))
+    p8.patches([counties_move[x]['x'] for x in counties_move.keys()], 
+            [counties_move[x]['y'] for x in counties_move.keys()
+                ],
+            fill_color = ['white' for x in counties_move.keys()]
+            )
+    grid = gridplot([p1, p2, p3, p4,  p7, p8],  
         ncols = 2)
     show(grid)
 

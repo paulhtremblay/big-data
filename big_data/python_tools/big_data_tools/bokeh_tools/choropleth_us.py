@@ -6,7 +6,7 @@ from numpy import nan
 from bokeh.plotting import figure, show, output_file
 try:
     from . import  choropleth_prep
-except SystemError:
+except ImportError:
     import choropleth_prep
 
 from bokeh.palettes import Blues8

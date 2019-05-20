@@ -84,5 +84,5 @@ grid = gridplot([p_bar, p_stacked,  p_hist, p_box,
     p_discrete_pdf, p_qq_normal,
     p_qq_weibul,
     ], 
-    ncols = 2, height=500, width = 500)
+    ncols = 2)
 show(grid)

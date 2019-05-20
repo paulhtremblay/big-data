@@ -18,10 +18,26 @@ labels = ['first', 'second', 'third', 'fourth']
 p_bar = figure(x_range=labels, plot_height=500, plot_width = 1000, title="my test title")
 bar(labels, [1, 2, 3,4], p =p_bar)
 
+#stacked bar
+fruits = ['Apples', 'Pears', 'Nectarines', 'Plums', 'Grapes', 'Strawberries']
+years = ["2015", "2016", "2017"]
+
+data = {'fruits' : fruits,
+        '2015'   : [2, 1, 4, 3, 2, 4],
+        '2016'   : [5, 3, 4, 2, 4, 6],
+        '2017'   : [3, 2, 4, 4, 5, 3]}
+
+p_stacked = figure(x_range=fruits, plot_height=250, title="Fruit Counts by Year",
+           toolbar_location=None, tools="hover")
+p_stacked.vbar_stack(years, x='fruits', width=0.9, color=["#c9d9d3", "#718dbf", "#e84d60"], source=data,
+             legend=[{'value':x} for x in years])
+p_stacked.legend.location = "top_left"
+p_stacked.legend.orientation = "horizontal"
+
 #histogram
 p_hist = hist([1,1,1,1,15,5,5, 10, 10,10,8])
 
-#box plot
+p_qq_normal = prob_plot(np.random.normal(size = 1000), 'norm')#box plot
 cats = ['a', 'b']
 data = [[1, 2, 3], [4, 5, 6]]
 p_box = box_plot(cats, data)
@@ -62,7 +78,7 @@ p_qq_normal = prob_plot(np.random.normal(size = 1000), 'norm')
 #QQ plot Weibul
 p_qq_weibul = prob_plot(np.random.weibull(a = .5, size = 1000), 'weibull_min', sparams= (.5,))
 
-grid = gridplot([p_bar, p_hist, p_box, 
+grid = gridplot([p_bar, p_stacked,  p_hist, p_box, 
     p_simple_line, 
     p_with_date,
     p_discrete_pdf, p_qq_normal,

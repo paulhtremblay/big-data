@@ -110,9 +110,11 @@ def create_track_not_over_speed(in_file, out, max_speed = 3.2, min_speed = 0,
                             time = point.time
                             )
                         )
+    write_gpx_to_file(gpx_writer, out,  verbose = verbose)
 
 def get_walking_tracks(in_file,  max_speed = 3.2, min_speed = 0, 
         verbose = False):
+    """Stops at first singn of excessive speed"""
     all_tracks = [[]]
     final = []
     with  open(in_file, 'r') as gpx_file:
@@ -166,7 +168,29 @@ def create_track_time_range(in_file, out, start_time, end_time,
 
     write_gpx_to_file(gpx_writer, out,  verbose = verbose)
 
+def view2(in_file):
+    n = 0
+    with  open(in_file, 'r') as gpx_file:
+        gpx = gpxpy.parse(gpx_file)
+    for track in gpx.tracks:
+        for segment in track.segments:
+            prev_point = None
+            for counter, point in enumerate(segment.points):
+                n+= 1
+                pass
+    print(n)
+
 if __name__ == '__main__':
+    in_file = '/home/henry/Downloads/Track_2020-09-08 190333.gpx'
+    out = '/home/henry/Downloads/test_track.gpx'
+    create_track_not_over_speed(in_file = in_file, 
+            out = out, 
+            verbose = True, min_speed = .8)
+    view2(out)
+
+
+
+if __name__ == '__main__n':
     #view()
     #create_track()
     #just get track until speed too much. Very useful in most cases

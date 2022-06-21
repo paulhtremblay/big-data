@@ -1,7 +1,7 @@
 bokeh==0.12.16
 Jinja2==2.10
 MarkupSafe==1.0
-numpy==1.14.4
+numpy==1.22.0
 packaging==17.1
 pyparsing==2.2.0
 pyproj==1.9.5.1

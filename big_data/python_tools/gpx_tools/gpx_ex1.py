@@ -1,3 +1,4 @@
+import argparse
 import gpxpy
 import gpxpy.gpx
 import datetime
@@ -87,7 +88,8 @@ def write_gpx_to_file(gpx, path, verbose = False):
         write_obj.write(gpx.to_xml())
 
 def create_track_not_over_speed(in_file, out, max_speed = 3.2, min_speed = 0, 
-        verbose = False, start_time = None, end_time = None):
+        verbose = False, start_time = None, end_time = None,
+        continue_after_max = False):
     gpx_writer, gpx_segment = make_gpx_writer_segment()
     with  open(in_file, 'r') as gpx_file:
         gpx_read = gpxpy.parse(gpx_file)
@@ -100,8 +102,15 @@ def create_track_not_over_speed(in_file, out, max_speed = 3.2, min_speed = 0,
                 if speed and speed < min_speed:
                     continue
                 if speed and speed > max_speed:
-                    write_gpx_to_file(gpx_writer, out,  verbose = verbose)
-                    return
+                    if verbose:
+                        print(point.time)
+                        print("speed {s} over {m}, so returning.".format(s = speed, m = max_speed))
+                        print('writing {n} points'.format(n= counter))
+                    if continue_after_max:
+                        continue
+                    else:
+                        write_gpx_to_file(gpx_writer, out,  verbose = verbose)
+                        return
                 gpx_segment.points.append(
                         gpxpy.gpx.GPXTrackPoint(
                             latitude = point.latitude, 
@@ -110,7 +119,8 @@ def create_track_not_over_speed(in_file, out, max_speed = 3.2, min_speed = 0,
                             time = point.time
                             )
                         )
-    write_gpx_to_file(gpx_writer, out,  verbose = verbose)
+    write_gpx_to_file(gpx_writer, out, verbose = verbose)
+
 
 def get_walking_tracks(in_file,  max_speed = 3.2, min_speed = 0, 
         verbose = False):
@@ -168,7 +178,29 @@ def create_track_time_range(in_file, out, start_time, end_time,
 
     write_gpx_to_file(gpx_writer, out,  verbose = verbose)
 
-def view2(in_file):
+def create_track_time_range2(in_file, out, verbose = False):
+    gpx_writer, gpx_segment = make_gpx_writer_segment()
+    with  open(in_file, 'r') as gpx_file:
+        gpx_read = gpxpy.parse(gpx_file)
+    for track in gpx_read.tracks:
+        for segment in track.segments:
+            prev_point = None
+            for counter, point in enumerate(segment.points):
+                current_time, distance, time_bet, speed =  get_info(point, prev_point)
+                if current_time < datetime.datetime(2022,1,5):
+                    continue
+                gpx_segment.points.append(
+                        gpxpy.gpx.GPXTrackPoint(
+                            latitude = point.latitude, 
+                            longitude = point.longitude, 
+                            elevation=point.elevation,
+                            time = point.time
+                            )
+                        )
+
+    write_gpx_to_file(gpx_writer, out,  verbose = verbose)
+
+def view2(in_file, verbose = False):
     n = 0
     with  open(in_file, 'r') as gpx_file:
         gpx = gpxpy.parse(gpx_file)
@@ -177,16 +209,20 @@ def view2(in_file):
             prev_point = None
             for counter, point in enumerate(segment.points):
                 n+= 1
-                pass
-    print(n)
+    if verbose:
+        print('created {n} points'.format(n = n))
 
 if __name__ == '__main__':
-    in_file = '/home/henry/Downloads/Track_2020-09-08 190333.gpx'
-    out = '/home/henry/Downloads/test_track.gpx'
-    create_track_not_over_speed(in_file = in_file, 
-            out = out, 
-            verbose = True, min_speed = .8)
-    view2(out)
+    #in_file = '/home/henry/Downloads/Track_2020-09-08 190333.gpx'
+    in_file = '/home/henry/Downloads/Track_2022-01-06 163548.gpx'
+    out = '/home/henry/Downloads/jan_6_walk_out.gpx'
+    create_track_time_range2(in_file, out)
+
+    #out2 = '/home/henry/Downloads/walk_ny_eve2_track.gpx'
+    #out_1 = '/home/henry/Downloads/walk_ny_eve_1_track.gpx'
+    #start_time = datetime.datetime(2020, 12, 31, 21, 27, 34)
+    #end_time = datetime.datetime(2021, 12, 31, 21, 27, 34)
+
 
 
 
@@ -194,7 +230,6 @@ if __name__ == '__main__n':
     #view()
     #create_track()
     #just get track until speed too much. Very useful in most cases
-    in_file = '/home/henry/Downloads/track_tmp.gpx'
     create_track_not_over_speed(in_file = in_file, 
             out = '/home/henry/Downloads/camadan_beach.gpx', 
             verbose = True)

@@ -20,7 +20,7 @@ class GpxError(Exception):
 def _get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("path", help="path of file")
-    parser.add_argument("--type", '-t', choices = ['view', 'prune'],
+    parser.add_argument("--type", '-t', choices = ['view', 'prune-number', 'prune-speed'],
             required = True,
             help="type of convert")
     parser.add_argument("--verbose", '-v',  
@@ -34,16 +34,28 @@ def _get_args():
             type = int,
             required = False,
             help="end of prune")
+    parser.add_argument("--max-speed", '-mxs',  
+            type = float,
+            default = 7,
+            required = False,
+            help="end of prune")
+    parser.add_argument("--min-speed", '-mis',  
+            type = float,
+            default = 0,
+            required = False,
+            help="end of prune")
     parser.add_argument("--out", '-o',  
             required = False,
             help="outpute")
     args = parser.parse_args()
-    if args.type == 'prune'  and not args.start:
-        parser.error('-s is required when type is prune .')
-    if args.type == 'prune'  and not args.end:
-        parser.error('-e is required when type is prune .')
-    if args.type == 'prune'  and not args.out:
-        parser.error('-o is required when type is prune .')
+    if args.type == 'prune-number'  and not args.start:
+        parser.error('-s is required when type is prune-number .')
+    if args.type == 'prune-number'  and not args.end:
+        parser.error('-e is required when type is prune-number .')
+    if args.type == 'prune-number'  and not args.out:
+        parser.error('-o is required when type is prune-number .')
+    if args.type == 'prune-speed'  and not args.out:
+        parser.error('-o is required when type is prune-speed .')
     return args
 
 def _make_gpx_writer_segment():
@@ -58,6 +70,8 @@ def _get_info(point, prev_point):
     d = point.distance_3d(prev_point)
     td =  point.time_difference(prev_point) #in miliseconds
     s = point.speed_between(prev_point)
+    if s:
+        s = s * 2.23694
     current = _create_dt(point)
     return current, d, td, s
 
@@ -81,15 +95,16 @@ def _make_gpx_writer_segment():
     gpx_track.segments.append(gpx_segment)
     return gpx, gpx_segment
 
-def _round(x):
+def _round(x, n = 0):
     if not x:
         return x
-    return(round(x))
+    return(round(x,n))
 
-def view(path):
-    out_path = os.path.join(os.environ['HOME'], 'Downloads', 'out_{uuid}.csv'.format(
-        uuid = uuid.uuid1().hex))
-    print('out path is {o}'.format(o = out_path))
+def view(path, out_path):
+    if not out_path:
+        out_path = os.path.join(os.environ['HOME'], 'Downloads', 'out_{uuid}.csv'.format(
+            uuid = uuid.uuid1().hex))
+        print('out path is {o}'.format(o = out_path))
     start_time = None
     total_distance = 0
     gpx_writer, gpx_segment = _make_gpx_writer_segment()
@@ -112,10 +127,39 @@ def view(path):
                     csv_writer.writerow([counter + 1, 
                         current_time_pacific.strftime('%Y-%m-%d %H:%M:%S'), 
                         _round(distance), 
-                        _round(time_bet), _round(speed)])
+                        _round(time_bet), _round(speed,1)])
         total_time = current_time - start_time
-        total_distance_ = round(total_distance/1500 * .62, 1)
-        csv_writer.writerow(['', total_time, total_distance_])
+        total_distance_ = round(total_distance * 0.000621371, 1)
+        mph = total_distance_/(total_time.total_seconds()/3600)
+        csv_writer.writerow(['', total_time, total_distance_, '', mph])
+
+def create_track_prune_excess_speed(in_path, verbose, max_speed = 7, 
+        min_speed = 0,
+        out_path = None):
+    start_time = None
+    total_distance = 0
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    with  open(in_path, 'r') as gpx_file:
+        gpx_read = gpxpy.parse(gpx_file)
+    for track in gpx_read.tracks:
+        for segment in track.segments:
+            prev_point = None
+            for counter, point in enumerate(segment.points):
+                current_time, distance, time_bet, speed =  _get_info(point, prev_point)
+                prev_point = point
+                if speed != None and (speed < min_speed or  speed > max_speed):
+                    if verbose:
+                        print('skipping')
+                        continue
+                gpx_segment.points.append(
+                        gpxpy.gpx.GPXTrackPoint(
+                            latitude = point.latitude, 
+                            longitude = point.longitude, 
+                            elevation=point.elevation,
+                            time = point.time
+                            )
+                            )
+    _write_gpx_to_file(gpx_writer, out_path, verbose = verbose)
 
 def create_track_by_numbers(in_path, start_num, end_num,out_path = None,
         verbose = False):
@@ -134,13 +178,31 @@ def create_track_by_numbers(in_path, start_num, end_num,out_path = None,
                                 time = point.time
                                 )
                             )
+
+                else: 
+                    if verbose:
+                        print('skipping')
     _write_gpx_to_file(gpx_writer, out_path, verbose = verbose)
 
 if __name__ == '__main__':
     args = _get_args()
     if args.type == 'view':
-        view(path = args.path)
+        view(path = args.path, 
+                out_path = args.out)
     elif args.type == 'prune':
         create_track_by_numbers(in_path = args.path, 
             start_num = args.start, end_num = args.end, out_path = args.out,
             verbose = args.verbose)
+    elif args.type == 'prune-speed':
+        create_track_prune_excess_speed(in_path = args.path, 
+            out_path = args.out,
+            max_speed = args.max_speed,
+            min_speed = args.min_speed,
+            verbose = args.verbose)
+    elif args.type == 'prune-number':
+        create_track_by_numbers(in_path = args.path, 
+        start_num = args.start, end_num = args.end,
+        out_path = args.out,
+        verbose = args.verbose)
+    else:
+        raise  GpxError('arg not found')

@@ -19,46 +19,6 @@ pp = pprint.PrettyPrinter(indent = 4)
 class GpxError(Exception):
     pass
 
-def _run_shell(args, verbose = False):
-        if verbose:
-            print(f'args are {args}')
-        response = subprocess.run(
-            args,  
-            capture_output=True, check=True, )
-        return response
-
-def convert_from_kml(in_path, out_path, verbose = False):
-    fh, out_path_temp = tempfile.mkstemp() 
-    args = [
-        'gpsbabel',  
-        '-w',  '-i',  
-        'kml',  '-f', 
-        in_path, 
-        '-o',  
-        'gpx', 
-        '-F',  
-        out_path_temp
-            ]
-    response = _run_shell(args = args, 
-            verbose = True
-            )
-    create_track_from_segments(
-            in_path = out_path_temp, 
-            out_path = out_path, 
-            verbose = verbose )
-    os.close(fh)
-    os.remove(out_path_temp)
-
-
-
-def _run_shell(args, verbose = False):
-        if verbose:
-            print(f'args are {args}')
-        response = subprocess.run(
-            args,  
-            capture_output=True, check=True, )
-        return response
-
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -68,8 +28,13 @@ def _get_args():
                 'view', 
                 'prune-number', 
                 'prune-speed', 
-                'smooth-segment',
+                'join-segment',
                 'from-kml',
+                'smooth',
+                'create-markers',
+                'map-from-walk',
+                'waypoints',
+                'climb',
                 ],
             required = True,
             help="type of convert")
@@ -107,9 +72,9 @@ def _get_args():
     if args.type == 'prune-speed'  and not args.out:
         parser.error('-o is required when type is prune-speed .')
     if args.type == 'smooth-segment'  and not args.out:
-        parser.error('-o is required when type is prune-speed .')
+        parser.error('-o is required when type is smooth-segment .')
     if args.type == 'from-kml'  and not args.out:
-        parser.error('-o is required when type is prune-speed .')
+        parser.error('-o is required when type is from-prune .')
     return args
 
 def _make_gpx_writer_segment():
@@ -130,6 +95,8 @@ def _get_info(point, prev_point):
     return current, d, td, s, point.elevation
 
 def _create_dt(point):
+    if point.time == None:
+        return None
     dt =  datetime.datetime.strptime(
         point.time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
     dt = dt.replace(tzinfo = pytz.utc)
@@ -153,6 +120,53 @@ def _round(x, n = 0):
     if not x:
         return x
     return(round(x,n))
+
+def convert_from_kml(in_path, out_path, verbose = False):
+    import kml_to_gpx
+    tree = kml_to_gpx.convert(path = in_path, 
+            verbose = verbose)
+    gpx_read = gpxpy.parse(tree)
+    _write_gpx_to_file(gpx_read, out_path, verbose = verbose)
+    return
+
+def create_markers(path, verbose = False):
+    elevation_mark = None
+    prev_mile = None
+    elevations = []
+    miles = []
+    total_distance = 0
+    with  open(path, 'r') as gpx_file:
+        gpx_read = gpxpy.parse(gpx_file)
+    for track in gpx_read.tracks:
+        for segment in track.segments:
+            prev_point = None
+            for counter, point in enumerate(segment.points):
+                current_time, distance, time_bet, speed, elevation =  _get_info(point, prev_point)
+                elevation_feet = elevation * 3.28084
+                if distance:
+                    total_distance += distance
+                prev_point = point
+                if elevation_mark != None  and math.floor(elevation_feet/300) != elevation_mark:
+                    mark_elevation = math.floor(elevation_feet/300) * 300
+                    elevations.append({'elevations':mark_elevation,
+                        'lattitude':point.latitude,
+                        'longitude': point.longitude,
+                        'elevation': point.elevation
+                        }
+                            )
+
+                if prev_mile != None and math.floor(total_distance * 0.000621371) != prev_mile:
+                    mile_mark = math.floor(total_distance * 0.000621371)
+                    miles.append({'mile':mile_mark,
+                        'lattitude':point.latitude,
+                        'longitude': point.longitude,
+                        'elevation': point.elevation
+                        }
+                            )
+                prev_mile = math.floor(total_distance * 0.000621371)
+                elevation_mark = math.floor(elevation_feet/300)
+    return elevations, miles
+
 
 def view(path, out_path):
     if not out_path:
@@ -179,7 +193,9 @@ def view(path, out_path):
                     elevation_feet = elevation * 3.28084
                     if not start_time:
                         start_time = current_time
-                    current_time_pacific = current_time.astimezone(timezone('US/Pacific'))
+                    current_time_pacific = datetime.datetime(1900,1,1)
+                    if current_time:
+                        current_time_pacific = current_time.astimezone(timezone('US/Pacific'))
                     if distance:
                         total_distance += distance
                     prev_point = point
@@ -202,10 +218,15 @@ def view(path, out_path):
                         mile_mark,
                         ])
                     elevation_mark = math.floor(elevation_feet/300)
-        total_time = current_time - start_time
+        if current_time:
+            total_time = current_time - start_time
+        else:
+            total_time = None
         total_distance_ = round(total_distance * 0.000621371, 1)
-        mph = total_distance_/(total_time.total_seconds()/3600)
-        csv_writer.writerow(['', total_time, total_distance_, '', mph])
+        if total_time:
+            mph = total_distance_/(total_time.total_seconds()/3600)
+        if total_time:
+            csv_writer.writerow(['', total_time, total_distance_, '', mph])
 
 def create_track_prune_excess_speed(in_path, verbose, max_speed = 7, 
         min_speed = 0,
@@ -258,6 +279,21 @@ def create_track_by_numbers(in_path, start_num, end_num,out_path = None,
                         print('skipping')
     _write_gpx_to_file(gpx_writer, out_path, verbose = verbose)
 
+def smooth_and_simplify(in_path, verbose = False):
+    with  open(in_path, 'r') as gpx_file:
+        gpx_read = gpxpy.parse(gpx_file)
+    cloned_simplified = gpx_read.clone()
+    cloned_simplified.simplify()
+    base = os.path.splitext(in_path)[0]
+    _write_gpx_to_file(
+            gpx = cloned_simplified, path = f'{base}_simplified.gpx', 
+            verbose = verbose)
+    cloned = gpx_read.clone()
+    cloned.reduce_points(min_distance = 100)
+    _write_gpx_to_file(
+            gpx = cloned, path = f'{base}_reduced.gpx', 
+            verbose = verbose)
+
 def create_track_from_segments(in_path, out_path, verbose = False ):
     """
     KML will often result in many segments; this function makes on continuous GPX
@@ -280,6 +316,133 @@ def create_track_from_segments(in_path, out_path, verbose = False ):
                             )
     _write_gpx_to_file(gpx_writer, out_path, verbose = True)
 
+def _get_tree_from_path(in_path):
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    with  open(in_path, 'r') as gpx_file:
+        gpx_read = gpxpy.parse(gpx_file)
+    return gpx_read
+
+def _get_waypoints_path(in_path):
+    dir_name, base_name = os.path.split(in_path)
+    date_s = base_name[6:16]
+    date = datetime.datetime.strptime(date_s, '%Y-%m-%d')
+    month = date.strftime('%B').upper()
+    day = date.strftime('%d')
+    year = date.strftime('%y')
+    d_s = f'{day}-{month}-{year}'
+    waypoints_base_name = f'Waypoints_{d_s}.gpx'
+    waypoints_path = os.path.join(dir_name, waypoints_base_name)
+    if not os.path.isfile(waypoints_path):
+        return None
+    return waypoints_path
+
+def _make_tracks_list(tree) -> list:
+    final = []
+    for track in tree.tracks:
+        for segment in track.segments:
+            for counter, point in enumerate(segment.points):
+                final.append( gpxpy.gpx.GPXTrackPoint(
+                            latitude = point.latitude, 
+                            longitude = point.longitude, 
+                            elevation=point.elevation,
+                            time = point.time
+                            ))
+    return final
+
+def _get_highest_point(track_list):
+    max_ = (None, None)
+    for counter, i in enumerate(track_list):
+        e = i.elevation
+        if max_[1] == None or i.elevation > max_[1]:
+            max_ = (counter, i.elevation)
+    return max_
+
+def _is_breadcrumb(s):
+    try:
+        i = int(s)
+        return True
+    except ValueError:
+        return False
+
+def _fix_waypoints(waypoints):
+    final = []
+    for i in waypoints:
+        if not _is_breadcrumb(i.name):
+            final.append(i)
+    return final
+
+def _make_separate_waypoints(path, waypoints):
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    dir_name, base_name = os.path.split(path)
+    out_path = os.path.join(dir_name, 'sep_waypoints.gpx')
+    for i in waypoints:
+        gpx_writer.waypoints.append(i)
+    _write_gpx_to_file(gpx_writer, path = out_path)
+
+def waypoints(path, verbose):
+    elevations, miles =  create_markers(path, verbose = verbose)
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    dir_name, base_name = os.path.split(path)
+    def create_waypoint(info, key):
+        gpx_wps = gpxpy.gpx.GPXWaypoint()
+        gpx_wps.latitude = info['lattitude']
+        gpx_wps.longitude = info['longitude']
+        #gpx_wps.symbol = "Marks-Mooring-Float"
+
+        gpx_wps.name = f"{key}{info[key]}"
+        #gpx_wps.description = "Vaarwater GRUTTE GAASTMAR"
+        return gpx_wps
+        gpx.waypoints.append(gpx_wps)
+    for i in miles:
+        w=create_waypoint(info = i, key= 'mile')
+        gpx_writer.waypoints.append(w)
+    base_name, ext = os.path.splitext(base_name)
+    out_path = os.path.join(dir_name, f'{base_name}_miles_waypoints.gpx')
+    _write_gpx_to_file(gpx_writer, path = out_path)
+
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    for i in elevations:
+        print(i)
+        w=create_waypoint(info = i, key = "elevations")
+        gpx_writer.waypoints.append(w)
+    out_path = os.path.join(dir_name, f'{base_name}_elevations_waypoints.gpx')
+    _write_gpx_to_file(gpx_writer, path = out_path, verbose = verbose)
+
+
+def map_from_walk(in_path, verbose):
+    tracks_tree = _get_tree_from_path(in_path)
+    waypoints_path = _get_waypoints_path(in_path)
+    waypoints_tree = None
+    if waypoints_path:
+        waypoints_tree = _get_tree_from_path(waypoints_path)
+    track_points = _make_tracks_list(tracks_tree)
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    counter, elevation = _get_highest_point(track_points)
+    climb = track_points[0:counter]
+    waypoints = waypoints_tree.waypoints
+    for i in climb:
+        gpx_segment.points.append(i)
+    waypoints = _fix_waypoints(waypoints)
+    for i in waypoints:
+        gpx_writer.waypoints.append(i)
+    _write_gpx_to_file(gpx_writer, path = '/home/henry/Downloads/climb.gpx')
+    _make_separate_waypoints(path = waypoints_path, waypoints = waypoints)
+
+def climb(in_path, verbose):
+    tracks_tree = _get_tree_from_path(in_path)
+    track_points = _make_tracks_list(tracks_tree)
+    gpx_writer, gpx_segment = _make_gpx_writer_segment()
+    counter, elevation = _get_highest_point(track_points)
+    climb = track_points[0:counter]
+    for i in climb:
+        gpx_segment.points.append(i)
+    dir_name, base_name = os.path.split(in:path)
+    base_name, ext = os.path.splitext(base_name)
+    out_path = os.path.join(dir_name, f'{base_name}_climb.gpx')
+    _write_gpx_to_file(gpx_writer, path = out_path)
+
+
+
 
 if __name__ == '__main__':
     args = _get_args()
@@ -301,15 +464,32 @@ if __name__ == '__main__':
         start_num = args.start, end_num = args.end,
         out_path = args.out,
         verbose = args.verbose)
-    elif args.type == 'smooth-segment':
+    elif args.type == 'join-segment':
         create_track_from_segments(
                 in_path = args.path, 
                 out_path = args.out, 
+                verbose = args.verbose )
+    elif args.type == 'smooth':
+        smooth_and_simplify(
+                in_path = args.path, 
                 verbose = args.verbose )
     elif args.type == 'from-kml':
         convert_from_kml(
                 in_path = args.path, 
                 out_path = args.out, 
                 verbose = args.verbose )
+    elif args.type == 'map-from-walk':
+        map_from_walk(
+                in_path = args.path, 
+                verbose = args.verbose )
+    elif args.type == 'create-markers':
+        create_markers(path = args.path,
+                verbose = args.verbose)
+    elif args.type == 'waypoints':
+        waypoints(path = args.path,
+                verbose = args.verbose)
+    elif args.type == 'climb':
+        climb(in_path = args.path,
+                verbose = args.verbose)
     else:
         raise  GpxError('arg not found')

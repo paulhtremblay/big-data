@@ -49,6 +49,10 @@ def _get_args():
             type = int,
             required = False,
             help="end of prune")
+    parser.add_argument("--interval",   
+            type = int,
+            required = False,
+            help="interval for elevation")
     parser.add_argument("--max-speed", '-mxs',  
             type = float,
             default = 7,
@@ -75,6 +79,8 @@ def _get_args():
         parser.error('-o is required when type is smooth-segment .')
     if args.type == 'from-kml'  and not args.out:
         parser.error('-o is required when type is from-prune .')
+    if args.type == 'waypoints'  and not args.interval:
+        parser.error('--interval is required when type is waypoints .')
     return args
 
 def _make_gpx_writer_segment():
@@ -129,7 +135,12 @@ def convert_from_kml(in_path, out_path, verbose = False):
     _write_gpx_to_file(gpx_read, out_path, verbose = verbose)
     return
 
-def create_markers(path, verbose = False):
+def _round(elevation, interval):
+    elevation_ = elevation * 3.28084
+    return round(elevation_/interval) * interval
+
+def create_markers(
+        path, elevation_interval = 300, verbose = False):
     elevation_mark = None
     prev_mile = None
     elevations = []
@@ -142,16 +153,23 @@ def create_markers(path, verbose = False):
             prev_point = None
             for counter, point in enumerate(segment.points):
                 current_time, distance, time_bet, speed, elevation =  _get_info(point, prev_point)
+                if elevation < 0:
+                    elevation = 0
                 elevation_feet = elevation * 3.28084
                 if distance:
                     total_distance += distance
                 prev_point = point
-                if elevation_mark != None  and math.floor(elevation_feet/300) != elevation_mark:
-                    mark_elevation = math.floor(elevation_feet/300) * 300
-                    elevations.append({'elevations':mark_elevation,
+                if elevation_mark != None \
+                    and math.floor(elevation_feet/elevation_interval) != elevation_mark:
+                    mark_elevation = math.floor(elevation_feet/elevation_interval) * elevation_interval
+                    elevations.append({'elevations':_round(
+                            elevation = point.elevation,
+                            interval = elevation_interval,
+                            ),
+                        'elevations': elevation_mark * elevation_interval,
                         'lattitude':point.latitude,
                         'longitude': point.longitude,
-                        'elevation': point.elevation
+                        'elevation': point.elevation * 3.28084
                         }
                             )
 
@@ -164,7 +182,8 @@ def create_markers(path, verbose = False):
                         }
                             )
                 prev_mile = math.floor(total_distance * 0.000621371)
-                elevation_mark = math.floor(elevation_feet/300)
+                elevation_mark = math.floor(elevation_feet/elevation_interval)
+
     return elevations, miles
 
 
@@ -379,8 +398,11 @@ def _make_separate_waypoints(path, waypoints):
         gpx_writer.waypoints.append(i)
     _write_gpx_to_file(gpx_writer, path = out_path)
 
-def waypoints(path, verbose):
-    elevations, miles =  create_markers(path, verbose = verbose)
+def waypoints(path, interval, verbose):
+    elevations, miles =  create_markers(
+            path, 
+            verbose = verbose, 
+            elevation_interval = interval)
     gpx_writer, gpx_segment = _make_gpx_writer_segment()
     dir_name, base_name = os.path.split(path)
     def create_waypoint(info, key):
@@ -389,7 +411,7 @@ def waypoints(path, verbose):
         gpx_wps.longitude = info['longitude']
         #gpx_wps.symbol = "Marks-Mooring-Float"
 
-        gpx_wps.name = f"{key}{info[key]}"
+        gpx_wps.name = f"{info[key]}"
         #gpx_wps.description = "Vaarwater GRUTTE GAASTMAR"
         return gpx_wps
         gpx.waypoints.append(gpx_wps)
@@ -398,15 +420,35 @@ def waypoints(path, verbose):
         gpx_writer.waypoints.append(w)
     base_name, ext = os.path.splitext(base_name)
     out_path = os.path.join(dir_name, f'{base_name}_miles_waypoints.gpx')
-    _write_gpx_to_file(gpx_writer, path = out_path)
+    _write_gpx_to_file(gpx_writer, path = out_path, verbose = verbose)
 
     gpx_writer, gpx_segment = _make_gpx_writer_segment()
     for i in elevations:
-        print(i)
         w=create_waypoint(info = i, key = "elevations")
         gpx_writer.waypoints.append(w)
     out_path = os.path.join(dir_name, f'{base_name}_elevations_waypoints.gpx')
     _write_gpx_to_file(gpx_writer, path = out_path, verbose = verbose)
+
+    def make_diff_elevations():
+        d = {}
+        for i in elevations:
+            e = i['elevations']
+            if not d.get(e):
+                d[e] = []
+            d[e].append(i)
+        return d
+
+    d = make_diff_elevations()
+    for key in d.keys():
+        gpx_writer, gpx_segment = _make_gpx_writer_segment()
+        for i in d[key]:
+            w=create_waypoint(info = i, key = "elevations")
+            gpx_writer.waypoints.append(w)
+        out_path = os.path.join('/home/henry/Downloads/elevations', 
+                f'{key}_elevations_waypoints.gpx')
+        _write_gpx_to_file(gpx_writer, path = out_path, verbose = verbose)
+
+
 
 
 def map_from_walk(in_path, verbose):
@@ -436,7 +478,7 @@ def climb(in_path, verbose):
     climb = track_points[0:counter]
     for i in climb:
         gpx_segment.points.append(i)
-    dir_name, base_name = os.path.split(in:path)
+    dir_name, base_name = os.path.split(in_path)
     base_name, ext = os.path.splitext(base_name)
     out_path = os.path.join(dir_name, f'{base_name}_climb.gpx')
     _write_gpx_to_file(gpx_writer, path = out_path)
@@ -487,6 +529,7 @@ if __name__ == '__main__':
                 verbose = args.verbose)
     elif args.type == 'waypoints':
         waypoints(path = args.path,
+                interval = args.interval,
                 verbose = args.verbose)
     elif args.type == 'climb':
         climb(in_path = args.path,

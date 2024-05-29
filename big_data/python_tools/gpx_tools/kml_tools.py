@@ -17,6 +17,10 @@ def _get_args():
     parser_combine = subparsers.add_parser('combine', help='a help')
     parser_combine.add_argument("path", help="path of file")
     parser_combine.set_defaults(func=combine)
+    parser_combine_files = subparsers.add_parser('combine-files', help='a help')
+    parser_combine_files.set_defaults(func=combine_files)
+    parser_combine_files.add_argument("paths", nargs='+', help="path of file")
+    parser_combine_files.add_argument("--out", '-o',  required = True, help="out-path")
     args = parser.parse_args()
     args.func(args)
 
@@ -51,7 +55,7 @@ def combine_lines(root_or_path):
 
 def make_write_root()-> object:
     root = etree.Element("kml", 
-            xmlns= "http://www.topografix.com/GPX/1/1")
+            xmlns= "http://www.opengis.net/kml/2.2")
     return root
 
 def ns():
@@ -86,6 +90,9 @@ def make_point_strings(points):
 
 def make_line(name, points):
     placemark = etree.Element("Placemark")
+    name_e =etree.Element("name") 
+    name_e.text = name
+    placemark.append(name_e)
     line_string =etree.Element("LineString") 
     extrude = etree.Element("extrude") 
     extrude.text = '1'
@@ -109,14 +116,34 @@ def write_to_path(root, path):
 def main():
     args = _get_args()
 
-def combine(args):
-    in_path = args.path
-    dir_ = os.path.dirname(os.path.abspath(in_path))
-    rel_in_path = os.path.split(in_path)[1]
+
+def combine_files(args):
+    in_paths = args.paths
+    write_root = make_write_root()
+    folder =etree.Element("Folder") 
+    write_root.append(folder)
+    for counter1, i in enumerate(in_paths):
+        root = get_tree(i)
+        lines = get_lines(tree = root)
+        for counter2, j in enumerate(lines):
+            s = j.text.strip()
+            line_el = make_line(name = f'combined-line-{counter1 + 1}{counter2 + 1}', 
+                    points = s)
+            folder.append(line_el)
+    write_to_path(root = write_root, path = args.out)
+
+
+def _make_out_path(path):
+    dir_ = os.path.dirname(os.path.abspath(path))
+    rel_in_path = os.path.split(path)[1]
     rel_in_path_no_ext = os.path.splitext(rel_in_path)[0]
     out_path = os.path.join(dir_, f'{rel_in_path_no_ext}_combined.kml')
+    return out_path
+
+def combine(args):
+    in_path = args.path
     root = combine_lines(root_or_path = in_path)
-    write_to_path(root = root, path = out_path)
+    write_to_path(root = root, path = _make_out_path(in_path))
 
 if __name__== '__main__':
     main()

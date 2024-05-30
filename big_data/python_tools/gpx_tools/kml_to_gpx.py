@@ -95,6 +95,7 @@ def make_trkseg(trk:object, coordinates:str)->object:
     return trkseg
 
 def convert(path:str, out_path:str = None, verbose:bool = False):
+    assert False, 'use kml_tools.py convert-to-gpx'
     tree = get_tree(path = path)
     line_list = get_lines(tree)
     point_list = get_points(tree = tree)

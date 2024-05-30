@@ -14,13 +14,21 @@ def _get_args():
                                    description='valid subcommands',
                                    help='additional help')
 
-    parser_combine = subparsers.add_parser('combine', help='a help')
+    parser_combine = subparsers.add_parser('combine', help='combine lines in one file')
     parser_combine.add_argument("path", help="path of file")
     parser_combine.set_defaults(func=combine)
-    parser_combine_files = subparsers.add_parser('combine-files', help='a help')
+    parser_combine_files = subparsers.add_parser('combine-files', help='combine lines from mult files')
     parser_combine_files.set_defaults(func=combine_files)
     parser_combine_files.add_argument("paths", nargs='+', help="path of file")
     parser_combine_files.add_argument("--out", '-o',  required = True, help="out-path")
+    parser_convert_gpx = subparsers.add_parser('convert_to_gpx', help='convert to gpx')
+    parser_convert_gpx.set_defaults(func=convert_to_gpx)
+    parser_convert_gpx.add_argument("path", help="path of file")
+    parser_convert_gpx.add_argument("--out", required = False,  
+            help="out path of file")
+    parser_convert_gpx.add_argument("--verbose", '-v',  action ='store_false')  
+    #parser.add_argument('--no-feature', dest='feature', action='store_false')
+
     args = parser.parse_args()
     args.func(args)
 
@@ -33,6 +41,45 @@ def get_tree(path):
 
 def get_lines(tree:object)->list:
     return  tree.findall('.//{http://www.opengis.net/kml/2.2}LineString/{http://www.opengis.net/kml/2.2}coordinates')  
+
+def get_points(tree:object)-> list:
+    final = []
+    l =  tree.findall('.//{http://www.opengis.net/kml/2.2}Placemark')  
+    for i in l:
+        is_linestring = False
+        children = list(i)
+        for j in children:
+            if j.tag == '{http://www.opengis.net/kml/2.2}LineString':
+                is_linestring = True
+        if not is_linestring:
+            final.append(i)
+    return final
+
+def get_waypoint_info_from_element(placemark:object) -> (str,str):
+    name = None
+    coordinates = None
+    for element in placemark.iter():
+        if element.tag == '{http://www.opengis.net/kml/2.2}name':
+            if name != None:
+                raise KmlToGpxError('more than one point in element; don\'t know how to handle')
+            name = element.text
+        elif element.tag == '{http://www.opengis.net/kml/2.2}coordinates':
+            if coordinates != None:
+                print(coordinates)
+                raise KmlToGpxError('more than one point in element; don\'t know how to handle')
+            coordinates = element.text.strip()
+
+    return name, coordinates
+
+def get_cooridinates_from_string(s:str)->(str, str, str):
+    s = s.strip()
+    fields = s.split(',')
+    if len(fields) < 2:
+        raise KmlToGpxError('not enough fields in coordinates')
+    elevation = None
+    if len(fields) == 3:
+        elevation = fields[2]
+    return fields[1], fields[0], elevation
 
 def get_cooridinates_from_lines(line_list):
     l =   []
@@ -56,6 +103,11 @@ def combine_lines(root_or_path):
 def make_write_root()-> object:
     root = etree.Element("kml", 
             xmlns= "http://www.opengis.net/kml/2.2")
+    return root
+
+def make_write_root_gpx()-> object:
+    root = etree.Element("gpx", 
+            creator = "GPSMAP 64st", version = "1.1", xmlns= "http://www.topografix.com/GPX/1/1")
     return root
 
 def ns():
@@ -108,10 +160,12 @@ def make_line(name, points):
     return placemark
 
 
-def write_to_path(root, path):
+def write_to_path(root, path, verbose = False):
     s =  etree.tostring(root)
     with open(path, 'wb') as write_obj:
         write_obj.write(s)
+    if verbose:
+        print(f'wrote to {path}')
 
 def main():
     args = _get_args()
@@ -140,10 +194,83 @@ def _make_out_path(path):
     out_path = os.path.join(dir_, f'{rel_in_path_no_ext}_combined.kml')
     return out_path
 
+def _make_out_path_gen(path, ext, name = '', ):
+    dir_ = os.path.dirname(os.path.abspath(path))
+    rel_in_path = os.path.split(path)[1]
+    rel_in_path_no_ext = os.path.splitext(rel_in_path)[0]
+    out_path = os.path.join(dir_, f'{rel_in_path_no_ext}{name}.{ext}')
+    return out_path
+
 def combine(args):
     in_path = args.path
     root = combine_lines(root_or_path = in_path)
     write_to_path(root = root, path = _make_out_path(in_path))
+
+def convert_to_gpx(args):
+    tree = get_tree(path = args.path)
+    line_list = get_lines(tree)
+    point_list = get_points(tree = tree)
+    write_root = make_write_root_gpx()
+    for i in point_list:
+        name, coordinates  = get_waypoint_info_from_element(
+                placemark = i)
+        lattitude, longitude, elevation = get_cooridinates_from_string(coordinates)
+        add_wpx(root = write_root, lattitude = lattitude, 
+            longitude = longitude, name = name, elevation = elevation)
+    trk = make_trk(root = write_root)
+    for i in line_list:
+        trkseg = make_trkseg(trk = trk, coordinates = i)
+        trk.append(trkseg)
+    out = args.out
+    if not args.out:
+       out = _make_out_path_gen(path = args.path, ext = 'gpx' )
+    write_to_path(root = write_root, path = out,verbose = args.verbose)
+
+"""
+These are GPX functions
+"""
+
+def add_wpx(root, lattitude, longitude, name, elevation = None):
+    wpt = etree.Element("wpt", lat=lattitude, lon=longitude)
+    if elevation:
+        ele = etree.Element("ele")
+        ele.text = elevation
+    name_element = etree.Element("name")
+    name_element.text = name
+    sym = etree.Element("sym")
+    sym.text = "Residence"
+
+    if elevation:
+        wpt.append(ele)
+    wpt.append(name_element)
+    wpt.append(sym)
+    root.append(wpt)
+
+def make_trk(root:object)-> object:
+    trk = etree.Element("trk")
+    root.append(trk)
+    return trk
+
+def make_trkpt(lattitude:str, longitude:str, elevation:str)->object:
+    trkpt = etree.Element("trkpt", lat=lattitude, lon = longitude, )
+    if elevation:
+        ele = etree.Element("ele")
+        ele.text = elevation
+        trkpt.append(ele)
+    return trkpt
+
+def make_trkseg(trk:object, coordinates:str)->object:
+    trkseg = etree.Element("trkseg")
+    for i in coordinates.text.split('\n'):
+        if i.strip() == '':
+            continue
+        lattitude, longitude, elevation = get_cooridinates_from_string(i)
+        trkpt = make_trkpt(
+                lattitude = lattitude, 
+                longitude = longitude, 
+                elevation = elevation)
+        trkseg.append(trkpt)
+    return trkseg
 
 if __name__== '__main__':
     main()

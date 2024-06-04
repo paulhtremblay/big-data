@@ -1,5 +1,13 @@
 import os
 import argparse
+import pprint
+import math
+from statistics import median
+
+import tools
+
+
+pp = pprint.PrettyPrinter(indent= 4)
 try:
     from lxml import etree
 except ImportError:
@@ -7,6 +15,10 @@ except ImportError:
 
 class KmlToGpxError(Exception):
     pass
+
+def _average_lines(y, window_len, order):
+    from scipy.signal import savgol_filter as savitzky_golay
+    return savitzky_golay(y, window_len, order) 
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -27,7 +39,28 @@ def _get_args():
     parser_convert_gpx.add_argument("--out", required = False,  
             help="out path of file")
     parser_convert_gpx.add_argument("--verbose", '-v',  action ='store_false')  
-    #parser.add_argument('--no-feature', dest='feature', action='store_false')
+    parser_average_lines = subparsers.add_parser('average-lines', help='average multiple lines in KML')
+    parser_average_lines.add_argument("path", help="path of file")
+    parser_average_lines.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_average_lines.set_defaults(func=average_lines)
+
+    parser_combine_diff_lines = subparsers.add_parser(
+            'merge-lines', help='merge paths')
+    parser_combine_diff_lines.add_argument("paths", nargs='+', help="path of file")
+    parser_combine_diff_lines.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_combine_diff_lines.add_argument("--out", required = True,  
+            help="out path of file")
+    parser_combine_diff_lines.set_defaults(func=merge_lines)
+
+    parser_create_mile_markers = subparsers.add_parser(
+            'mile-markers', help='create mile markers')
+    parser_create_mile_markers.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_create_mile_markers.set_defaults(func=create_mile_markers)
+    parser_create_mile_markers.add_argument("path", help="path of file")
+    parser_create_mile_markers.add_argument("--out", required = True,  
+            help="out path of file")
+    parser_create_mile_markers.add_argument("--reverse", '-r',  
+            action ='store_true', help = 'route is up and back, so double points')  
 
     args = parser.parse_args()
     args.func(args)
@@ -81,6 +114,24 @@ def get_cooridinates_from_string(s:str)->(str, str, str):
         elevation = fields[2]
     return fields[1], fields[0], elevation
 
+def _get_points_from_line_string(s):
+    final = []
+    for i in s.split('\n'):
+        lat, lon, ele =  get_cooridinates_from_string(s= i)
+        final.append((float(lat), float(lon), float(ele)))
+    return final
+
+def tracks_from_kml(path):
+    tree = get_tree(path = path)
+    lines = get_lines(tree= tree)
+    final = []
+    for counter, i in enumerate(lines):
+        name = f'track_{counter}'
+        d = {'name':name, 'points':_get_points_from_line_string(s = i.text.strip())}
+        final.append(d)
+    return final
+
+
 def get_cooridinates_from_lines(line_list):
     l =   []
     for i in line_list:
@@ -125,10 +176,13 @@ def make_point(
         description_e.text = description
         placemark.append(description_e)
     point =etree.Element("Point") 
+    name_e =etree.Element("name") 
+    name_e.text = str(name)
     coordinates =etree.Element("coordinates") 
     coordinates.text = f"{longitude},{latitude},{elevation}"
     point.append(coordinates)
     placemark.append(point)
+    placemark.append(name_e)
     return placemark
 
 def make_point_strings(points):
@@ -201,6 +255,22 @@ def _make_out_path_gen(path, ext, name = '', ):
     out_path = os.path.join(dir_, f'{rel_in_path_no_ext}{name}.{ext}')
     return out_path
 
+def _make_points_from_lines(line_list):
+    assert False, 'not used'
+    final = []
+    for i in line_list:
+        for element in i.iter():
+            if element.tag == '{http://www.opengis.net/kml/2.2}coordinates':
+                coordinates = element.text.strip()
+                for j in coordinates.split('\n'):
+                    pairs = get_cooridinates_from_string(s = j)
+                    pairs = (pairs[1], pairs[0], pairs[2])
+                    final.append(pairs)
+    final = sorted(final, key = lambda x:x[0])
+    longitude = [x[0] for x in final]
+    latitude = [x[1] for x in final]
+    return longitude, latitude
+
 def combine(args):
     in_path = args.path
     root = combine_lines(root_or_path = in_path)
@@ -225,6 +295,131 @@ def convert_to_gpx(args):
     if not args.out:
        out = _make_out_path_gen(path = args.path, ext = 'gpx' )
     write_to_path(root = write_root, path = out,verbose = args.verbose)
+
+def average_lines(args):
+    raise NotImplementedError('not good algorithm')
+    tree = get_tree(path = args.path)
+    line_list = get_lines(tree)
+    longitude, latitude = _make_points_from_lines(line_list)
+    #fitted_longitude = _average_lines(y = longitude, window_len = 20, order = 3)
+    fitted_latitude = _average_lines(y = latitude, window_len = 45, order = 3)
+    assert len(latitude) == len(fitted_latitude)
+    #assert len(longitude) == len(fitted_latitude)
+    points = []
+    for counter, i in enumerate(longitude):
+        points.append((i, fitted_latitude[counter],0))
+    root = make_write_root()
+    new_line_element = make_line(name = 'averaged-line', points = points)
+    root.append(new_line_element)
+    out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_smoothed' )
+    write_to_path(root = root, path = out,verbose = args.verbose)
+
+def _find_nearest(p, points):
+    smallest = (None, None)
+    #distance, index
+    for counter, i in enumerate(points):
+        dis = haversine_distance(
+            latitude_1 = p[0] , 
+            longitude_1= p[1], 
+            latitude_2 = i[0]  , 
+            longitude_2= i[1] )
+        if smallest[0] == None or dis < smallest[0]:
+            smallest = (dis, counter)
+    return smallest
+
+def _too_far(dis, max_ = 15):
+    if dis < max_:
+        return False
+    return True
+
+def _get_median(points):
+    lats = []
+    longs = []
+    for i in points:
+        lats.append(i[0])
+        longs.append(i[1])
+    lats = sorted(lats)
+    longs = sorted(longs)
+    return median(lats), median (longs)
+
+
+def _get_cluster(point, points, max_):
+    final = []
+    for i in points:
+        for j in i:
+            dis = haversine_distance(
+                latitude_1 = point[0] , 
+                longitude_1= point[1], 
+                latitude_2 =j[0]  , 
+                longitude_2= j[1] )
+            if dis <= max_:
+                final.append((j[0], j[1]))
+    return final
+
+def merge_lines(args):
+    tracks = []
+    for path in args.paths:
+        ext = os.path.splitext(path)[1]
+        if ext == '.gpx':
+            tracks.append(tracks_from_gpx(path))
+        elif ext == '.kml':
+            tracks.append(tracks_from_kml(path))
+        else:
+            raise NotImplementedError(f'not ext for {ext}')
+    base_track = tracks[0][0]['points']
+    final = []
+    n_lons = []
+    n_lats = []
+    for p in base_track:
+        temp_ = [p]
+        for i in tracks[1:]:
+            nearest = _find_nearest(p, i[0]['points'])
+            if not _too_far(nearest[0]):
+                temp_.append(i[0]['points'][nearest[1]])
+            n_lat, n_lon  = _get_median(points = temp_)
+            n_lats.append(n_lat)
+            n_lons.append(n_lon)
+            final.append((n_lat, n_lon))
+    n_lats_s = _average_lines(y = n_lats, window_len = 30, order = 3)
+    root = make_write_root()
+    points = []
+    for i in final:
+        points.append((i[1], i[0], 0))
+    points2 = []
+    for counter, i in enumerate(n_lats_s):
+        points2.append((n_lons[counter], i, 0))
+
+    new_line_element = make_line(name = 'averaged-line', points = points2)
+    root.append(new_line_element)
+    out = args.out
+    write_to_path(root = root, path = out,verbose = args.verbose)
+
+def merge_lines_cluster(args):
+    tracks = []
+    for path in args.paths:
+        ext = os.path.splitext(path)[1]
+        if ext == '.gpx':
+            tracks.append(tracks_from_gpx(path))
+    points = [tracks[x][0]['points'] for x in range(len(tracks))]
+    f = []
+    for i in points[0]:
+        c = _get_cluster(
+                point = i,
+                points = points,
+                max_ = 25
+                )
+        f.append(_get_median(
+                points = c
+                ))
+    points_ = []
+    for i in f:
+        points_.append((i[1], i[0], 0))
+    root = make_write_root()
+    new_line_element = make_line(name = 'averaged-line', points = points_)
+    root.append(new_line_element)
+    #out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_smoothed' )
+    out = '/home/henry/Downloads/averaged2.kml'
+    write_to_path(root = root, path = out,verbose = args.verbose)
 
 """
 These are GPX functions
@@ -259,6 +454,25 @@ def make_trkpt(lattitude:str, longitude:str, elevation:str)->object:
         trkpt.append(ele)
     return trkpt
 
+def tracks_from_gpx(path):
+    tree = get_tree(path = path)
+    trk =   tree.findall('.//{http://www.topografix.com/GPX/1/1}trk')  
+    final = []
+    for counter, i in enumerate(trk):
+        name = f'track_{counter}'
+        d = {'name':name, 'points':[]}
+        trksegs = i.findall('{http://www.topografix.com/GPX/1/1}trkseg')
+        for j in trksegs:
+            trackpoints = j.findall('{http://www.topografix.com/GPX/1/1}trkpt')
+            for trackpoint in trackpoints:
+                ele = trackpoint.findall('{http://www.topografix.com/GPX/1/1}ele')
+                elevation = 0
+                if ele:
+                    elevation = float(ele[0].text)
+                d['points'].append((float(trackpoint.get('lat')), float(trackpoint.get('lon')), elevation))
+        final.append(d)
+    return final
+
 def make_trkseg(trk:object, coordinates:str)->object:
     trkseg = etree.Element("trkseg")
     for i in coordinates.text.split('\n'):
@@ -271,6 +485,70 @@ def make_trkseg(trk:object, coordinates:str)->object:
                 elevation = elevation)
         trkseg.append(trkpt)
     return trkseg
+
+#distance
+
+def calc_distance(origin, destination):
+    """great-circle distance between two points on a sphere
+       from their longitudes and latitudes"""
+    lat1, lon1 = origin
+    lat2, lon2 = destination
+    radius = 6371 # km. earth
+
+    dlat = radians(lat2-lat1)
+    dlon = radians(lon2-lon1)
+    a = (sin(dlat/2) * sin(dlat/2) + cos(radians(lat1)) * cos(radians(lat2)) *
+         sin(dlon/2) * sin(dlon/2))
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    d = radius * c
+
+    return d
+
+def haversine_distance(
+    latitude_1: float, 
+    longitude_1: float, 
+    latitude_2: float, 
+    longitude_2: float) -> float:    
+    """
+    Haversine distance between two points, expressed in meters.
+
+    Implemented from http://www.movable-type.co.uk/scripts/latlong.html
+    """
+    EARTH_RADIUS = 6378.137 * 1000
+
+    d_lon = math.radians(longitude_1 - longitude_2)
+    lat1 = math.radians(latitude_1)
+    lat2 = math.radians(latitude_2)
+    d_lat = lat1 - lat2
+
+    a = math.pow(math.sin(d_lat/2),2) + \
+        math.pow(math.sin(d_lon/2),2) * math.cos(lat1) * math.cos(lat2)
+    c = 2 * math.asin(math.sqrt(a))
+    d = EARTH_RADIUS * c
+
+    return d
+
+def create_mile_markers(args):
+    l = tracks_from_kml(path = args.path)
+    root = make_write_root()
+    document_e =etree.Element("Document") 
+    root.append(document_e)
+    for i in l:
+        points = i['points']
+        miles = tools.create_mile_markers(
+                points = points, 
+                reverse = args.reverse)
+        for mile in miles:
+            p =make_point(
+                    name = mile['mile'], 
+                    latitude = mile['latitude'], 
+                    longitude =  mile['longitude'], 
+                    description = None,
+                    elevation = mile['elevation'])
+            document_e.append(p)
+
+    write_to_path(root = root, path = args.out,verbose = args.verbose)
+
 
 if __name__== '__main__':
     main()

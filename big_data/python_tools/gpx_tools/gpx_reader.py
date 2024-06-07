@@ -135,7 +135,7 @@ def convert_from_kml(in_path, out_path, verbose = False):
     _write_gpx_to_file(gpx_read, out_path, verbose = verbose)
     return
 
-def _round(elevation, interval):
+def _round_ele(elevation, interval):
     elevation_ = elevation * 3.28084
     return round(elevation_/interval) * interval
 

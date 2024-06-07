@@ -62,50 +62,18 @@ def create_mile_markers(points,
     return miles
 
 
-def create_mile_markers_(
-        path, elevation_interval = 300, verbose = False):
-    elevation_mark = None
-    prev_mile = None
-    elevations = []
-    miles = []
-    total_distance = 0
-    with  open(path, 'r') as gpx_file:
-        gpx_read = gpxpy.parse(gpx_file)
-    for track in gpx_read.tracks:
-        for segment in track.segments:
-            prev_point = None
-            for counter, point in enumerate(segment.points):
-                current_time, distance, time_bet, speed, elevation =  _get_info(point, prev_point)
-                if elevation < 0:
-                    elevation = 0
-                elevation_feet = elevation * 3.28084
-                if distance:
-                    total_distance += distance
-                prev_point = point
-                if elevation_mark != None \
-                    and math.floor(elevation_feet/elevation_interval) != elevation_mark:
-                    mark_elevation = math.floor(elevation_feet/elevation_interval) * elevation_interval
-                    elevations.append({'elevations':_round(
-                            elevation = point.elevation,
-                            interval = elevation_interval,
-                            ),
-                        'elevations': elevation_mark * elevation_interval,
-                        'lattitude':point.latitude,
-                        'longitude': point.longitude,
-                        'elevation': point.elevation * 3.28084
-                        }
-                            )
+def find_nearest(point, points):
+    nearest = (None, None)
+    for counter, i in enumerate(points):
+        distance = haversine_distance(
+            latitude_1 =  point[0], 
+            longitude_1 = point[1], 
+            latitude_2 = i[0], 
+            longitude_2 = i[1]    
+        )
+        if nearest[1] == None or distance < nearest[1]:
+            nearest = (counter, distance)
+    return nearest
 
-                if prev_mile != None and math.floor(total_distance * 0.000621371) != prev_mile:
-                    mile_mark = math.floor(total_distance * 0.000621371)
-                    miles.append({'mile':mile_mark,
-                        'lattitude':point.latitude,
-                        'longitude': point.longitude,
-                        'elevation': point.elevation
-                        }
-                            )
-                prev_mile = math.floor(total_distance * 0.000621371)
-                elevation_mark = math.floor(elevation_feet/elevation_interval)
 
-    return elevations, miles
 

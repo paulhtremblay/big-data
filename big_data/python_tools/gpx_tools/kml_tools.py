@@ -21,7 +21,7 @@ def _average_lines(y, window_len, order):
     return savitzky_golay(y, window_len, order) 
 
 def _get_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help = False)
     subparsers = parser.add_subparsers(title='subcommands',
                                    description='valid subcommands',
                                    help='additional help')
@@ -61,6 +61,24 @@ def _get_args():
             help="out path of file")
     parser_create_mile_markers.add_argument("--reverse", '-r',  
             action ='store_true', help = 'route is up and back, so double points')  
+
+    parser_prune_by_mark = subparsers.add_parser(
+            'prune-by-location', help='prune by location')
+    parser_prune_by_mark.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_prune_by_mark.add_argument("path", help="path of file")
+    parser_prune_by_mark.add_argument("--start", '-s',  type = str, help = 'strart location')  
+    parser_prune_by_mark.add_argument("--end", '-e',  type = str, help = 'strart location')  
+    parser_prune_by_mark.set_defaults(func=prune_by_location)
+
+    parser_files_to_line = subparsers.add_parser(
+            'files-to-line', 
+            help='use multpile files to create one line')
+    parser_files_to_line.add_argument("paths", nargs='+', help="path of file")
+    parser_files_to_line.add_argument("--out", required = True,  
+            help="out path of file")
+    parser_files_to_line.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_files_to_line.set_defaults(func=files_to_lines)
+    
 
     args = parser.parse_args()
     args.func(args)
@@ -195,6 +213,7 @@ def make_point_strings(points):
     return coordinates_string
 
 def make_line(name, points):
+    points = swap_long_lat(points)
     placemark = etree.Element("Placemark")
     name_e =etree.Element("name") 
     name_e.text = name
@@ -549,7 +568,55 @@ def create_mile_markers(args):
 
     write_to_path(root = root, path = args.out,verbose = args.verbose)
 
+def _convert_string_to_points(s):
+    st, end = s.split(',')
+    st = float(st)
+    end = float(end)
+    return st, end
+
+def swap_long_lat(points):
+    """
+    for kml
+    """
+    final = []
+    for i in points:
+        final.append((i[1], i[0], i[2]))
+    return final
+
+def prune_by_location(args):
+    l = tracks_from_kml(path = args.path)
+    assert len(l) ==1
+    if not args.start:
+        start = 0
+    else:
+        lon, lat = _convert_string_to_points(args.start)
+        n = find_nearest = tools.find_nearest(point = (lon, lat), points = l[0]['points'])
+        start = n[0]
+    if not args.end:
+        end  = len(l) -1
+    else:
+        lon, lat = _convert_string_to_points(args.end)
+        n = find_nearest = tools.find_nearest(point = (lon, lat), points = l[0]['points'])
+        end = n[0]
+    points = l[0]['points'][start:end]
+    root = make_write_root()
+    line_element = make_line(name = 'new-line', points = points)
+    root.append(line_element)
+    out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_pruned' )
+    write_to_path(root = root, path = out,verbose = args.verbose)
+
+def files_to_lines(args):
+    points = []
+    for i in args.paths:
+        l = tracks_from_kml(path = i)
+        assert len(l) == 1
+        for i in l[0]['points']:
+            points.append(i)
+    line_element = make_line(name = 'new-line', points = points)
+    root = make_write_root()
+    root.append(line_element)
+    write_to_path(root = root, path = args.out,verbose = args.verbose)
+
 
 if __name__== '__main__':
     main()
-    pass

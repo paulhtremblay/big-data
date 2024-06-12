@@ -153,6 +153,8 @@ def create_markers(
             prev_point = None
             for counter, point in enumerate(segment.points):
                 current_time, distance, time_bet, speed, elevation =  _get_info(point, prev_point)
+                if elevation == None:
+                    continue
                 if elevation < 0:
                     elevation = 0
                 elevation_feet = elevation * 3.28084

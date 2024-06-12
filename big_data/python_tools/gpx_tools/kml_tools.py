@@ -5,6 +5,7 @@ import math
 from statistics import median
 
 import tools
+import smooth as smooth
 
 
 pp = pprint.PrettyPrinter(indent= 4)
@@ -21,7 +22,7 @@ def _average_lines(y, window_len, order):
     return savitzky_golay(y, window_len, order) 
 
 def _get_args():
-    parser = argparse.ArgumentParser(add_help = False)
+    parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='subcommands',
                                    description='valid subcommands',
                                    help='additional help')
@@ -78,6 +79,28 @@ def _get_args():
             help="out path of file")
     parser_files_to_line.add_argument("--verbose", '-v',  action ='store_true')  
     parser_files_to_line.set_defaults(func=files_to_lines)
+
+    parser_prune_to_top = subparsers.add_parser(
+            'prune-to-top', help='prune just the first half of hike')
+    parser_prune_to_top.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_prune_to_top.add_argument("path", help="path of file")
+    parser_prune_to_top.set_defaults(func=prune_to_top)
+
+    parser_polygon_from_files = subparsers.add_parser(
+            'polygon-from-files', 
+            help='use multpile files to create one polygon')
+    parser_polygon_from_files.add_argument("paths", nargs='+', help="path of file")
+    parser_polygon_from_files.add_argument("--out", '-o',  required = True,  
+            help="out path of file")
+    parser_polygon_from_files.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_polygon_from_files.set_defaults(func=polygon_from_files)
+
+    parser_smooth = subparsers.add_parser(
+            'smooth', 
+            help='smooth')
+    parser_smooth.add_argument("--verbose", '-v',  action ='store_true')  
+    parser_smooth.add_argument("path", help="path of file")
+    parser_smooth.set_defaults(func=smooth_func)
     
 
     args = parser.parse_args()
@@ -139,7 +162,7 @@ def _get_points_from_line_string(s):
         final.append((float(lat), float(lon), float(ele)))
     return final
 
-def tracks_from_kml(path):
+def tracks_from_kml(path, verbose = False):
     tree = get_tree(path = path)
     lines = get_lines(tree= tree)
     final = []
@@ -181,6 +204,34 @@ def make_write_root_gpx()-> object:
 
 def ns():
     return  'http://www.opengis.net/kml/2.2'  
+
+def make_polygon(
+        name: str,
+        points: list,
+        verbose: bool,
+        )-> object:
+    points = swap_long_lat(points)
+    placemark_e = etree.Element("Placemark")
+    name_e =etree.Element("name") 
+    name_e.text = name
+    polygon_e =etree.Element("Polygon") 
+    placemark_e.append(name_e)
+    placemark_e.append(polygon_e)
+    outerBoundaryIs_e =etree.Element("outerBoundaryIs") 
+    polygon_e.append(outerBoundaryIs_e)
+    LinearRing_e =etree.Element("LinearRing") 
+    tessellate_e =etree.Element("tessellate") 
+    tessellate_e.text = "1"
+    LinearRing_e.append(tessellate_e)
+    coordinates_e =etree.Element("coordinates") 
+    if points[0] != points[-1]:
+        points.append(points[0])
+    coordinates_e.text =  make_point_strings(points)
+    LinearRing_e.append(coordinates_e)
+    outerBoundaryIs_e.append(LinearRing_e)
+    return placemark_e
+          
+
 
 def make_point(
         name, 
@@ -473,7 +524,7 @@ def make_trkpt(lattitude:str, longitude:str, elevation:str)->object:
         trkpt.append(ele)
     return trkpt
 
-def tracks_from_gpx(path):
+def tracks_from_gpx(path, verbose = False):
     tree = get_tree(path = path)
     trk =   tree.findall('.//{http://www.topografix.com/GPX/1/1}trk')  
     final = []
@@ -590,13 +641,15 @@ def prune_by_location(args):
         start = 0
     else:
         lon, lat = _convert_string_to_points(args.start)
-        n = find_nearest = tools.find_nearest(point = (lon, lat), points = l[0]['points'])
+        n = find_nearest = tools.find_nearest(
+                point = (lon, lat), points = l[0]['points'], verbose = args.verbose)
         start = n[0]
     if not args.end:
-        end  = len(l) -1
+        end  = len(l[0]['points']) -1
     else:
         lon, lat = _convert_string_to_points(args.end)
-        n = find_nearest = tools.find_nearest(point = (lon, lat), points = l[0]['points'])
+        n = find_nearest = tools.find_nearest(
+                point = (lon, lat), points = l[0]['points'], verbose = args.verbose)
         end = n[0]
     points = l[0]['points'][start:end]
     root = make_write_root()
@@ -617,6 +670,57 @@ def files_to_lines(args):
     root.append(line_element)
     write_to_path(root = root, path = args.out,verbose = args.verbose)
 
+def tracks_from_file(path, verbose = False):
+    ext = os.path.splitext(path)[1]
+    if ext == '.gpx':
+        tree = tracks_from_gpx(path = path, verbose = verbose)
+    elif ext == '.kml':
+        tree = tracks_from_kml(path = path, verbose = verbose)
+    else:
+        raise ValueError('no match')
+    return tree
+
+
+def prune_to_top(args):
+    l = tracks_from_file(args.path)
+    assert len(l) == 1
+    high_point =  tools.find_highest(
+            points = l[0]['points'], verbose = args.verbose)
+    points = l[0]['points'][0:high_point[0]]
+    line_element = make_line(name = 'new-line', points = points)
+    root = make_write_root()
+    root.append(line_element)
+    out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_highest' )
+    write_to_path(root = root, path = out,verbose = args.verbose)
+
+def polygon_from_files(args):
+    points = []
+    for i in args.paths:
+        tracks = tracks_from_kml(path = i)
+        for track  in  tracks:
+            for j in track['points']:
+                points.append(j)
+
+    line_element = make_polygon(
+            name = 'new-line', points = points, verbose = args.verbose)
+    root = make_write_root()
+    root.append(line_element)
+    write_to_path(root = root, path = args.out,verbose = args.verbose)
+
+def smooth_func(args):
+    tracks = tracks_from_file(
+            path = args.path, 
+            verbose = args.verbose)
+    assert len(tracks) == 1
+    smoothed_points = smooth.process(
+            points = tracks[0]['points'],
+            verbose = args.verbose
+            )
+    line_element = make_line(name = 'smoothed-line', points = smoothed_points)
+    root = make_write_root()
+    root.append(line_element)
+    out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_smoothed' )
+    write_to_path(root = root, path = out,verbose = args.verbose)
 
 if __name__== '__main__':
     main()

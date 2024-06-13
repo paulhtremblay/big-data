@@ -1,4 +1,5 @@
 import  math
+from statistics import median
 
 def haversine_distance(
     latitude_1: float, 
@@ -74,8 +75,24 @@ def find_nearest(point, points, verbose = False):
         if nearest[1] == None or distance < nearest[1]:
             nearest = (counter, distance)
     if verbose:
-        print(f'nearest is {nearest}')
+        pass
+        #print(f'nearest is {nearest}')
     return nearest
+
+def find_nearest_distance(point, points, distance, verbose = False):
+    final = []
+    for counter, i in enumerate(points):
+        distance_ = haversine_distance(
+            latitude_1 =  point[0], 
+            longitude_1 = point[1], 
+            latitude_2 = i[0], 
+            longitude_2 = i[1]    
+        )
+        if distance_ == 0:
+            continue
+        elif distance_ <= distance:
+            final.append(i)
+    return final
 
 def find_highest(points, verbose = False):
     highest = (None, None)
@@ -175,4 +192,36 @@ def simplify(points: list, max_distance: float = None) -> list:
     return (simplify(points[:tmp_max_distance_position + 1], _max_distance) +
             simplify(points[tmp_max_distance_position:], _max_distance)[1:])
 
+def _get_median(points):
+    lats = []
+    longs = []
+    for i in points:
+        lats.append(i[0])
+        longs.append(i[1])
+    lats = sorted(lats)
+    longs = sorted(longs)
+    return median(lats), median (longs)
 
+
+def _too_far(dis, max_ = 15):
+    if dis < max_:
+        return False
+    return True
+
+def merge_lines(tracks):
+    points = []
+    base_track = tracks[0][0]['points']
+    final = []
+    n_lons = []
+    n_lats = []
+    for p in base_track:
+        temp_ = [p]
+        for i in tracks[1:]:
+            index, dist = find_nearest(p, i[0]['points'])
+            if not _too_far(dist):
+                temp_.append(i[0]['points'][index])
+            n_lat, n_lon  = _get_median(points = temp_)
+            final.append((n_lat, n_lon))
+    for i in final:
+        points.append((i[0], i[1], 0))
+    return points

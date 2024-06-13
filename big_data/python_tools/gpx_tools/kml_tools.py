@@ -17,10 +17,6 @@ except ImportError:
 class KmlToGpxError(Exception):
     pass
 
-def _average_lines(y, window_len, order):
-    from scipy.signal import savgol_filter as savitzky_golay
-    return savitzky_golay(y, window_len, order) 
-
 def _get_args():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='subcommands',
@@ -40,11 +36,6 @@ def _get_args():
     parser_convert_gpx.add_argument("--out", required = False,  
             help="out path of file")
     parser_convert_gpx.add_argument("--verbose", '-v',  action ='store_false')  
-    parser_average_lines = subparsers.add_parser('average-lines', help='average multiple lines in KML')
-    parser_average_lines.add_argument("path", help="path of file")
-    parser_average_lines.add_argument("--verbose", '-v',  action ='store_true')  
-    parser_average_lines.set_defaults(func=average_lines)
-
     parser_combine_diff_lines = subparsers.add_parser(
             'merge-lines', help='merge paths')
     parser_combine_diff_lines.add_argument("paths", nargs='+', help="path of file")
@@ -366,53 +357,6 @@ def convert_to_gpx(args):
        out = _make_out_path_gen(path = args.path, ext = 'gpx' )
     write_to_path(root = write_root, path = out,verbose = args.verbose)
 
-def average_lines(args):
-    raise NotImplementedError('not good algorithm')
-    tree = get_tree(path = args.path)
-    line_list = get_lines(tree)
-    longitude, latitude = _make_points_from_lines(line_list)
-    #fitted_longitude = _average_lines(y = longitude, window_len = 20, order = 3)
-    fitted_latitude = _average_lines(y = latitude, window_len = 45, order = 3)
-    assert len(latitude) == len(fitted_latitude)
-    #assert len(longitude) == len(fitted_latitude)
-    points = []
-    for counter, i in enumerate(longitude):
-        points.append((i, fitted_latitude[counter],0))
-    root = make_write_root()
-    new_line_element = make_line(name = 'averaged-line', points = points)
-    root.append(new_line_element)
-    out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_smoothed' )
-    write_to_path(root = root, path = out,verbose = args.verbose)
-
-def _find_nearest(p, points):
-    smallest = (None, None)
-    #distance, index
-    for counter, i in enumerate(points):
-        dis = haversine_distance(
-            latitude_1 = p[0] , 
-            longitude_1= p[1], 
-            latitude_2 = i[0]  , 
-            longitude_2= i[1] )
-        if smallest[0] == None or dis < smallest[0]:
-            smallest = (dis, counter)
-    return smallest
-
-def _too_far(dis, max_ = 15):
-    if dis < max_:
-        return False
-    return True
-
-def _get_median(points):
-    lats = []
-    longs = []
-    for i in points:
-        lats.append(i[0])
-        longs.append(i[1])
-    lats = sorted(lats)
-    longs = sorted(longs)
-    return median(lats), median (longs)
-
-
 def _get_cluster(point, points, max_):
     final = []
     for i in points:
@@ -429,37 +373,10 @@ def _get_cluster(point, points, max_):
 def merge_lines(args):
     tracks = []
     for path in args.paths:
-        ext = os.path.splitext(path)[1]
-        if ext == '.gpx':
-            tracks.append(tracks_from_gpx(path))
-        elif ext == '.kml':
-            tracks.append(tracks_from_kml(path))
-        else:
-            raise NotImplementedError(f'not ext for {ext}')
-    base_track = tracks[0][0]['points']
-    final = []
-    n_lons = []
-    n_lats = []
-    for p in base_track:
-        temp_ = [p]
-        for i in tracks[1:]:
-            nearest = _find_nearest(p, i[0]['points'])
-            if not _too_far(nearest[0]):
-                temp_.append(i[0]['points'][nearest[1]])
-            n_lat, n_lon  = _get_median(points = temp_)
-            n_lats.append(n_lat)
-            n_lons.append(n_lon)
-            final.append((n_lat, n_lon))
-    n_lats_s = _average_lines(y = n_lats, window_len = 30, order = 3)
+        tracks.append(tracks_from_file(path = path, verbose = args.verbose))
+    points = tools.merge_lines(tracks = tracks)
+    new_line_element = make_line(name = 'averaged-line', points = points)
     root = make_write_root()
-    points = []
-    for i in final:
-        points.append((i[1], i[0], 0))
-    points2 = []
-    for counter, i in enumerate(n_lats_s):
-        points2.append((n_lons[counter], i, 0))
-
-    new_line_element = make_line(name = 'averaged-line', points = points2)
     root.append(new_line_element)
     out = args.out
     write_to_path(root = root, path = out,verbose = args.verbose)
@@ -635,7 +552,7 @@ def swap_long_lat(points):
     return final
 
 def prune_by_location(args):
-    l = tracks_from_kml(path = args.path)
+    l = tracks_from_file(path = args.path, verbose = args.verbose)
     assert len(l) ==1
     if not args.start:
         start = 0
@@ -721,6 +638,7 @@ def smooth_func(args):
     root.append(line_element)
     out = _make_out_path_gen(path = args.path, ext = 'kml', name = '_smoothed' )
     write_to_path(root = root, path = out,verbose = args.verbose)
+
 
 if __name__== '__main__':
     main()

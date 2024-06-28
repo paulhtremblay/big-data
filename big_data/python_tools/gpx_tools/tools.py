@@ -1,5 +1,16 @@
+import os
 import  math
 from statistics import median
+import kml
+import gpx
+
+try:
+    from lxml import etree
+except ImportError:
+    import xml.etree.ElementTree as etree
+
+class KmlToGpxError(Exception):
+    pass
 
 def haversine_distance(
     latitude_1: float, 
@@ -225,3 +236,27 @@ def merge_lines(tracks):
     for i in final:
         points.append((i[0], i[1], 0))
     return points
+
+def tracks_from_file(path, verbose = False) -> object:
+    ext = os.path.splitext(path)[1]
+    if ext == '.gpx':
+        tree = gpx.tracks_from_gpx(path = path, verbose = verbose)
+    elif ext == '.kml':
+        tree = kml.tracks_from_kml(path = path, verbose = verbose)
+    else:
+        raise ValueError('no match')
+    return tree
+
+
+def get_tree(path):
+    with open(path, 'r') as read_obj:
+        tree = etree.parse(read_obj)
+    return tree
+
+def write_to_path(root, path, verbose = False):
+    s =  etree.tostring(root)
+    with open(path, 'wb') as write_obj:
+        write_obj.write(s)
+    if verbose:
+        print(f'wrote to {path}')
+

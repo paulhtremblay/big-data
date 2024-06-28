@@ -6,6 +6,7 @@ from statistics import median
 
 import tools
 import smooth as smooth
+import kml
 
 
 pp = pprint.PrettyPrinter(indent= 4)
@@ -26,7 +27,9 @@ def _get_args():
     parser_combine = subparsers.add_parser('combine', help='combine lines in one file')
     parser_combine.add_argument("path", help="path of file")
     parser_combine.set_defaults(func=combine)
-    parser_combine_files = subparsers.add_parser('combine-files', help='combine lines from mult files')
+    parser_combine_files = subparsers.add_parser('combine-files', 
+            help='combine lines from mult files into one or more lines in one file')
+    parser_combine_files.add_argument("--verbose", '-v',  action ='store_true')  
     parser_combine_files.set_defaults(func=combine_files)
     parser_combine_files.add_argument("paths", nargs='+', help="path of file")
     parser_combine_files.add_argument("--out", '-o',  required = True, help="out-path")
@@ -99,13 +102,6 @@ def _get_args():
 
     return args
 
-def get_tree(path):
-    with open(path, 'r') as read_obj:
-        tree = etree.parse(read_obj)
-    return tree
-
-def get_lines(tree:object)->list:
-    return  tree.findall('.//{http://www.opengis.net/kml/2.2}LineString/{http://www.opengis.net/kml/2.2}coordinates')  
 
 def get_points(tree:object)-> list:
     final = []
@@ -136,41 +132,17 @@ def get_waypoint_info_from_element(placemark:object) -> (str,str):
 
     return name, coordinates
 
-def get_cooridinates_from_string(s:str)->(str, str, str):
-    s = s.strip()
-    fields = s.split(',')
-    if len(fields) < 2:
-        raise KmlToGpxError('not enough fields in coordinates')
-    elevation = None
-    if len(fields) == 3:
-        elevation = fields[2]
-    return fields[1], fields[0], elevation
-
-def _get_points_from_line_string(s):
-    final = []
-    for i in s.split('\n'):
-        lat, lon, ele =  get_cooridinates_from_string(s= i)
-        final.append((float(lat), float(lon), float(ele)))
-    return final
-
-def tracks_from_kml(path, verbose = False):
-    tree = get_tree(path = path)
-    lines = get_lines(tree= tree)
-    final = []
-    for counter, i in enumerate(lines):
-        name = f'track_{counter}'
-        d = {'name':name, 'points':_get_points_from_line_string(s = i.text.strip())}
-        final.append(d)
-    return final
 
 
 def get_cooridinates_from_lines(line_list):
+    assert False, 'do not use'
     l =   []
     for i in line_list:
         l.append(i.text.strip())
     return '\n'.join(l)
 
 def combine_lines(root_or_path):
+    assert False, 'use files-to-line'
     if isinstance(root_or_path, str):
         root = get_tree(root_or_path)
     else:
@@ -183,104 +155,6 @@ def combine_lines(root_or_path):
     root.append(line_el)
     return root
 
-def make_write_root()-> object:
-    root = etree.Element("kml", 
-            xmlns= "http://www.opengis.net/kml/2.2")
-    return root
-
-def make_write_root_gpx()-> object:
-    root = etree.Element("gpx", 
-            creator = "GPSMAP 64st", version = "1.1", xmlns= "http://www.topografix.com/GPX/1/1")
-    return root
-
-def ns():
-    return  'http://www.opengis.net/kml/2.2'  
-
-def make_polygon(
-        name: str,
-        points: list,
-        verbose: bool,
-        )-> object:
-    points = swap_long_lat(points)
-    placemark_e = etree.Element("Placemark")
-    name_e =etree.Element("name") 
-    name_e.text = name
-    polygon_e =etree.Element("Polygon") 
-    placemark_e.append(name_e)
-    placemark_e.append(polygon_e)
-    outerBoundaryIs_e =etree.Element("outerBoundaryIs") 
-    polygon_e.append(outerBoundaryIs_e)
-    LinearRing_e =etree.Element("LinearRing") 
-    tessellate_e =etree.Element("tessellate") 
-    tessellate_e.text = "1"
-    LinearRing_e.append(tessellate_e)
-    coordinates_e =etree.Element("coordinates") 
-    if points[0] != points[-1]:
-        points.append(points[0])
-    coordinates_e.text =  make_point_strings(points)
-    LinearRing_e.append(coordinates_e)
-    outerBoundaryIs_e.append(LinearRing_e)
-    return placemark_e
-          
-
-
-def make_point(
-        name, 
-        latitude, 
-        longitude, 
-        description = None,
-        elevation = 0):
-    placemark = etree.Element("Placemark")
-    if description:
-        description_e =etree.Element("description") 
-        description_e.text = description
-        placemark.append(description_e)
-    point =etree.Element("Point") 
-    name_e =etree.Element("name") 
-    name_e.text = str(name)
-    coordinates =etree.Element("coordinates") 
-    coordinates.text = f"{longitude},{latitude},{elevation}"
-    point.append(coordinates)
-    placemark.append(point)
-    placemark.append(name_e)
-    return placemark
-
-def make_point_strings(points):
-    if isinstance(points, str):
-        return points
-    coordinates_list = []
-    for i in points:
-        coordinates_list.append(f'{i[0]},{i[1]},{i[2]}')
-    coordinates_string = '\n'.join(coordinates_list)
-    return coordinates_string
-
-def make_line(name, points):
-    points = swap_long_lat(points)
-    placemark = etree.Element("Placemark")
-    name_e =etree.Element("name") 
-    name_e.text = name
-    placemark.append(name_e)
-    line_string =etree.Element("LineString") 
-    extrude = etree.Element("extrude") 
-    extrude.text = '1'
-    line_string.append(extrude)
-    tessellate = etree.Element("tessellate") 
-    tessellate.text = '1'
-    line_string.append(tessellate)
-    coordinates = etree.Element("coordinates") 
-    coordinates_string = make_point_strings(points)
-    coordinates.text = coordinates_string
-    line_string.append(coordinates)
-    placemark.append(line_string)
-    return placemark
-
-
-def write_to_path(root, path, verbose = False):
-    s =  etree.tostring(root)
-    with open(path, 'wb') as write_obj:
-        write_obj.write(s)
-    if verbose:
-        print(f'wrote to {path}')
 
 def main():
     args = _get_args()
@@ -291,15 +165,14 @@ def combine_files(args):
     write_root = make_write_root()
     folder =etree.Element("Folder") 
     write_root.append(folder)
-    for counter1, i in enumerate(in_paths):
-        root = get_tree(i)
-        lines = get_lines(tree = root)
-        for counter2, j in enumerate(lines):
-            s = j.text.strip()
-            line_el = make_line(name = f'combined-line-{counter1 + 1}{counter2 + 1}', 
-                    points = s)
+    for counter1, i in enumerate(args.paths):
+        tracks = tracks_from_file(path = i)
+        for counter2, track in enumerate(tracks):
+            points = track['points']
+            line_el = make_line(name = track['name'], 
+                    points = points)
             folder.append(line_el)
-    write_to_path(root = write_root, path = args.out)
+    write_to_path(root = write_root, path = args.out, verbose = args.verbose)
 
 
 def _make_out_path(path):
@@ -441,24 +314,6 @@ def make_trkpt(lattitude:str, longitude:str, elevation:str)->object:
         trkpt.append(ele)
     return trkpt
 
-def tracks_from_gpx(path, verbose = False):
-    tree = get_tree(path = path)
-    trk =   tree.findall('.//{http://www.topografix.com/GPX/1/1}trk')  
-    final = []
-    for counter, i in enumerate(trk):
-        name = f'track_{counter}'
-        d = {'name':name, 'points':[]}
-        trksegs = i.findall('{http://www.topografix.com/GPX/1/1}trkseg')
-        for j in trksegs:
-            trackpoints = j.findall('{http://www.topografix.com/GPX/1/1}trkpt')
-            for trackpoint in trackpoints:
-                ele = trackpoint.findall('{http://www.topografix.com/GPX/1/1}ele')
-                elevation = 0
-                if ele:
-                    elevation = float(ele[0].text)
-                d['points'].append((float(trackpoint.get('lat')), float(trackpoint.get('lon')), elevation))
-        final.append(d)
-    return final
 
 def make_trkseg(trk:object, coordinates:str)->object:
     trkseg = etree.Element("trkseg")
@@ -542,33 +397,15 @@ def _convert_string_to_points(s):
     end = float(end)
     return st, end
 
-def swap_long_lat(points):
-    """
-    for kml
-    """
-    final = []
-    for i in points:
-        final.append((i[1], i[0], i[2]))
-    return final
-
 def prune_by_location(args):
     l = tracks_from_file(path = args.path, verbose = args.verbose)
     assert len(l) ==1
-    if not args.start:
-        start = 0
-    else:
-        lon, lat = _convert_string_to_points(args.start)
-        n = find_nearest = tools.find_nearest(
-                point = (lon, lat), points = l[0]['points'], verbose = args.verbose)
-        start = n[0]
-    if not args.end:
-        end  = len(l[0]['points']) -1
-    else:
-        lon, lat = _convert_string_to_points(args.end)
-        n = find_nearest = tools.find_nearest(
-                point = (lon, lat), points = l[0]['points'], verbose = args.verbose)
-        end = n[0]
-    points = l[0]['points'][start:end]
+    points = kml.prune_by_location(
+            points = l[0]['points'],
+            start = args.start,
+            end = args.end,
+            verbose = args.verbose
+            )
     root = make_write_root()
     line_element = make_line(name = 'new-line', points = points)
     root.append(line_element)
@@ -578,24 +415,14 @@ def prune_by_location(args):
 def files_to_lines(args):
     points = []
     for i in args.paths:
-        l = tracks_from_kml(path = i)
-        assert len(l) == 1
-        for i in l[0]['points']:
-            points.append(i)
+        tracks = tracks_from_kml(path = i)
+        for track in tracks: 
+            for i in track['points']:
+                points.append(i)
     line_element = make_line(name = 'new-line', points = points)
     root = make_write_root()
     root.append(line_element)
     write_to_path(root = root, path = args.out,verbose = args.verbose)
-
-def tracks_from_file(path, verbose = False):
-    ext = os.path.splitext(path)[1]
-    if ext == '.gpx':
-        tree = tracks_from_gpx(path = path, verbose = verbose)
-    elif ext == '.kml':
-        tree = tracks_from_kml(path = path, verbose = verbose)
-    else:
-        raise ValueError('no match')
-    return tree
 
 
 def prune_to_top(args):
